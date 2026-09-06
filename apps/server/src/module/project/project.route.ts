@@ -1,12 +1,10 @@
 import { Router } from "express";
-import { requireAuth } from "@/core/middleware/auth.middleware";
 import projectController from "./project.controller";
 import exportController from "../export/export.controller";
 
 const projectRouter: Router = Router();
 
 // Every project route is owner-scoped; there is no public project view.
-projectRouter.use(requireAuth);
 
 projectRouter.post("/", projectController.createProjectHandler);
 projectRouter.get("/", projectController.listProjectsHandler);

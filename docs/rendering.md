@@ -7,30 +7,28 @@
 ## Pipeline
 
 Rendering never happens inside an HTTP request. The API's whole job is: validate,
-snapshot, persist a `QUEUED` row, enqueue.
+snapshot, persist a `QUEUED` row, start the render and respond 202.
 
 ```
 Browser
   │  POST /projects/:id/exports  { format, quality, fps? }
   ▼
-API ── validate document (zod) ── snapshot ── ExportJob(QUEUED) ── enqueue
+API ── validate document (zod) ── snapshot ── ExportJob(QUEUED) ── startRender()
                                                                      │
-                                                              BullMQ ▼ Redis
-                                                                     │
-                                                    render worker picks up
+                                              render-runner (same process, async)
                                                                      │
   ┌──────────────────────────────────────────────────────────────────┴────┐
   │ validating → preparing → rendering → encoding → uploading → finalizing│
   │      zod       bundle     Chrome      FFmpeg     storage              │
   └──────────────────────────────────────────────────────────────────┬────┘
                                                                      │
-       socket: EXPORT_PROGRESS ───────────────────────────────► dialog
-       ExportJob row updated ──────────── polling fallback ────► dialog
+       ExportJob row updated ──────────── client polls ─────────────► dialog
 ```
 
-Progress arrives two ways on purpose: the socket pushes updates the instant the
-worker emits them, and a poll runs as a fallback so a dropped websocket — or a worker
-on another instance — cannot leave the bar frozen. Polling stops at a terminal state.
+The export job row is the only channel back to the client: the runner writes
+progress to it and the dialog polls `GET /v1/exports/:id` every 2.5s, stopping at a
+terminal state. Progress writes are throttled to real stage movement, so a 300-frame
+render does not produce 300 database writes.
 
 ---
 
@@ -132,24 +130,29 @@ maps it to actionable copy, shown with a reference code in the dialog.
 
 ---
 
-## Queues
+## Background work
 
-`BaseQueueService` (pre-existing) — subclasses self-register with the `QueueManager`,
-so adding a queue never means editing the manager.
+Both background paths run in the API process. There is no broker.
 
-| Queue | Concurrency | Attempts | Purpose |
+| Work | Where | Concurrency | Retries |
 |---|---|---|---|
-| `video-render` | `RENDER_CONCURRENCY` (1) | **1** | Render one export |
-| `asset-processing` | 4 | 3, exponential | Verify upload, thumbnail, mark READY |
-| `email-queue` | 100 | 3 | Pre-existing |
+| Video render | `src/renderer/render-runner.ts` | `RENDER_CONCURRENCY` (1) | none — retry is a user action |
+| Asset processing | `src/common/services/asset-processor.service.ts` | unbounded, per upload | none — the row records the failure |
 
-Renders get **one** attempt deliberately: they are expensive and long, so a blind
-retry doubles the cost of a genuine failure. Retrying is an explicit user action.
+Renders are serialised behind a small semaphore because each one costs a Chrome
+instance; raising `RENDER_CONCURRENCY` on a machine without the RAM to match will
+thrash. Renders get **no** automatic retry deliberately: they are expensive and long,
+so a blind retry doubles the cost of a genuine failure.
 
-**Idempotency.** The job payload carries only identifiers; the worker re-reads the
-snapshot from the database, so a replay after a restart cannot use a stale document.
-`jobId` is derived from the export id, so enqueueing twice is a no-op. A replayed job
-whose row is no longer startable exits quietly.
+**Idempotency.** `startRender` ignores a job already in flight, and the runner
+re-reads the snapshot from the database rather than holding it in memory. A job whose
+row is no longer startable exits quietly.
+
+**The trade-off.** Jobs live only as long as the process, so a restart mid-render
+loses that render. `reconcileInterruptedJobs()` runs at boot and fails any row still
+marked `QUEUED`/`PROCESSING` with `WORKER_UNAVAILABLE`, so the user gets a retry
+button rather than a bar frozen at 40%. This is the cost of dropping the broker, and
+it is the reason a horizontally-scaled deployment would need one back.
 
 ---
 
@@ -157,7 +160,7 @@ whose row is no longer startable exits quietly.
 
 `GET /v1/exports/:id/download[?disposition=inline]`
 
-Ownership is checked here, which is what lets the bucket stay private.
+Served through the API, which is what lets the bucket stay private.
 
 - **GCS** → 302 to a short-lived signed URL carrying `Content-Disposition`. A
   cross-origin `<a download>` is ignored by browsers, so the header has to come from
@@ -170,7 +173,7 @@ The filename is derived from the project name (`my-tech-fest.mp4`).
 
 ## Verified end to end
 
-A queued export was driven through the real pipeline against a live worker:
+An export was driven through the real pipeline:
 
 ```
 QUEUED → PROCESSING  5% preparing

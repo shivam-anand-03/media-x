@@ -3,9 +3,9 @@ import type { ProjectDocument } from "./schema";
 import { totalFrames } from "./layer-ops";
 
 /**
- * Export/render domain: the job lifecycle shared by the API, the BullMQ worker
+ * Export/render domain: the job lifecycle shared by the API, the render runner
  * and the client's progress UI. Keeping the state machine here means the
- * worker and the dialog agree on what "can I retry this?" means.
+ * runner and the dialog agree on what "can I retry this?" means.
  */
 
 export const EXPORT_STATUSES = ["QUEUED", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED"] as const;

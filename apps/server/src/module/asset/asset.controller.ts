@@ -3,7 +3,6 @@ import { Types } from "mongoose";
 import { confirmUploadSchema, listAssetsSchema, requestUploadSchema, type AssetKind } from "@workspace/motion";
 import { ApiResponse, AsyncHandler } from "@/common/utils/api-utils";
 import { NotFoundError, ValidationError } from "@/common/utils/error-utils";
-import { getAuth } from "@/common/helper/global";
 import { logger } from "@/common/helper/logger";
 import { AssetModel, AssetStatus, AssetType } from "@/core/models";
 import {
@@ -11,9 +10,9 @@ import {
   buildStoragePath,
   objectStorage,
   verifyLocalUpload,
+  MEDIA_PREFIX,
 } from "@/common/services/object-storage.service";
-import { queueManager } from "@/common/queue/queue-manager";
-import { AssetQueue, ASSET_QUEUE_NAME } from "@/common/queue/asset.queue";
+import { startAssetProcessing } from "@/common/services/asset-processor.service";
 import { ProjectService } from "../project/project.service";
 
 /**
@@ -22,26 +21,21 @@ import { ProjectService } from "../project/project.service";
  * Three steps, so bytes never pass through this process:
  *   1. POST /assets/upload-url  → validate policy, hand back a signed ticket
  *   2. PUT  <uploadUrl>         → browser uploads straight to storage
- *   3. POST /assets/confirm     → create the Asset row, queue processing
+ *   3. POST /assets/confirm     → create the Asset row, start processing
  */
 class AssetController {
-  private get assetQueue(): AssetQueue {
-    return queueManager.get<AssetQueue>(ASSET_QUEUE_NAME);
-  }
-
   /** POST /v1/assets/upload-url */
   requestUploadHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
     const body = requestUploadSchema.parse(req.body);
 
     // Policy first — an oversized or wrong-typed file never gets a key at all.
     assertUploadAllowed(body.kind, body.mimeType, body.size);
 
     if (body.projectId) {
-      await ProjectService.assertOwnership(body.projectId, userId);
+      await ProjectService.assertExists(body.projectId);
     }
 
-    const storagePath = buildStoragePath(userId, body.kind, body.filename);
+    const storagePath = buildStoragePath(body.kind, body.filename);
     const ticket = await objectStorage().createUploadTicket({
       storagePath,
       mimeType: body.mimeType,
@@ -87,24 +81,22 @@ class AssetController {
 
   /** POST /v1/assets/confirm */
   confirmUploadHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
     const body = confirmUploadSchema.parse(req.body);
 
     assertUploadAllowed(body.kind, body.mimeType, body.size);
 
-    // A user may only confirm a key inside their own prefix — otherwise one
-    // account could claim another's object by guessing its path.
-    if (!body.storagePath.startsWith(`users/${userId}/`)) {
-      throw new ValidationError("That upload does not belong to you.");
+    // Only keys this API issued may be confirmed, so a client cannot register
+    // an export — or anything outside the media tree — as its own asset.
+    if (!body.storagePath.startsWith(`${MEDIA_PREFIX}/`)) {
+      throw new ValidationError("That upload path is not valid.");
     }
 
     if (body.projectId) {
-      await ProjectService.assertOwnership(body.projectId, userId);
+      await ProjectService.assertExists(body.projectId);
     }
 
     const storage = objectStorage();
     const asset = await AssetModel.create({
-      userId: new Types.ObjectId(userId),
       projectId: body.projectId ? new Types.ObjectId(body.projectId) : null,
       type: body.kind as AssetType,
       status: AssetStatus.PENDING,
@@ -117,27 +109,20 @@ class AssetController {
     });
 
     // Verification and thumbnailing happen off the request so the editor can
-    // place the asset immediately.
-    await this.assetQueue.queueProcessing({ assetId: asset.id, userId }).catch((error) => {
-      logger.warn("Could not queue asset processing; marking ready optimistically", {
-        assetId: asset.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return AssetModel.updateOne({ _id: asset._id }, { status: AssetStatus.READY });
-    });
+    // place the asset immediately. The client polls the asset until it settles.
+    startAssetProcessing(asset.id);
 
     res.status(201).json(new ApiResponse("Upload complete.", asset.toJSON()));
   });
 
   /** GET /v1/assets */
   listAssetsHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
     const { page, limit, kind, projectId, search } = listAssetsSchema.parse(req.query);
 
-    const filter: Record<string, unknown> = { userId: new Types.ObjectId(userId) };
+    const filter: Record<string, unknown> = {};
     if (kind) filter.type = kind;
     if (projectId) {
-      await ProjectService.assertOwnership(projectId, userId);
+      await ProjectService.assertExists(projectId);
       filter.projectId = new Types.ObjectId(projectId);
     }
     if (search) {
@@ -166,11 +151,10 @@ class AssetController {
 
   /** DELETE /v1/assets/:id */
   deleteAssetHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
     const id = req.params.id as string;
     if (!Types.ObjectId.isValid(id)) throw new ValidationError("Invalid asset id.");
 
-    const asset = await AssetModel.findOne({ _id: new Types.ObjectId(id), userId: new Types.ObjectId(userId) });
+    const asset = await AssetModel.findById(id);
     if (!asset) throw new NotFoundError("Asset not found.");
 
     await AssetModel.deleteOne({ _id: asset._id });
@@ -185,14 +169,10 @@ class AssetController {
 
   /** GET /v1/assets/:id — used to poll a PENDING asset until it is READY. */
   getAssetHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
     const id = req.params.id as string;
     if (!Types.ObjectId.isValid(id)) throw new ValidationError("Invalid asset id.");
 
-    const asset = await AssetModel.findOne({
-      _id: new Types.ObjectId(id),
-      userId: new Types.ObjectId(userId),
-    }).lean({ virtuals: true });
+    const asset = await AssetModel.findById(id).lean({ virtuals: true });
 
     if (!asset) throw new NotFoundError("Asset not found.");
     res.status(200).json(new ApiResponse("Asset loaded.", { ...asset, id: (asset as any)._id?.toString() }));

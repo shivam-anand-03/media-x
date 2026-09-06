@@ -44,7 +44,11 @@ apps/server/src/**/*.js
 # Environment Files
 .env
 .env.*
-!.env.example  # keep example envs if you have them
+# Keep example envs. NOTE: gitignore has no trailing-comment syntax — a comment
+# on this line would make the whole string a literal pattern and silently break
+# the negation, which is exactly what used to happen here.
+!.env.example
+!**/.env.example
 
 # Generated Files
 /generated/
@@ -61,3 +65,9 @@ nginx.conf
 /.vscode
 /.claude
 /postman
+
+# Credentials — never commit these. Belt and braces: the per-app .gitignore
+# covers apps/server/keys/, and these catch anything placed elsewhere.
+keys/
+*key.json
+*credentials*.json

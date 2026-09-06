@@ -4,7 +4,6 @@ export type CreateLogInput = {
   level: Log["level"];
   message: string;
   context?: string;
-  userId?: Log["userId"];
   requestId?: string;
   method?: string;
   path?: string;
@@ -15,7 +14,6 @@ export type CreateLogInput = {
 
 export type ListLogsInput = {
   level?: Log["level"] | Log["level"][];
-  userId?: string;
   requestId?: string;
   context?: string;
   method?: string;
@@ -40,9 +38,6 @@ class LogService {
         : query.level;
     }
 
-    if (query.userId) {
-      filter.userId = query.userId;
-    }
 
     if (query.requestId) {
       filter.requestId = query.requestId;

@@ -14,8 +14,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "clean": "turbo run clean",
     "type-check": "turbo run check-types",
-    "test": "turbo run test",
-    "dev:infra": "docker compose up -d"
+    "test": "turbo run test"
   },
   "devDependencies": {
     "@workspace/eslint-config": "workspace:*",

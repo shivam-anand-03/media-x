@@ -158,7 +158,7 @@ Called on every path where a document enters the system:
 | `POST /projects`, `PATCH /projects/:id` | Client-authored JSON is never trusted |
 | Template seeding | Authored data, but still data |
 | AI compiler output | Guarantees generated documents are valid before they reach anyone |
-| **Inside the render worker** | The stored snapshot was client-authored once; re-checked before Chrome sees it |
+| **Inside the render runner** | The stored snapshot was client-authored once; re-checked before Chrome sees it |
 | Editor load | A document from an older schema surfaces as an error, not a blank canvas |
 
 Two rules deserve calling out:
@@ -166,7 +166,7 @@ Two rules deserve calling out:
 - **Colours** must be `#rgb`, `#rrggbb` or `#rrggbbaa`, so no renderer has to guess
   at a CSS string it cannot parse.
 - **Asset URLs** must be `http(s)` or a base64 `data:` URL. This is what stops a
-  document from pointing the render worker at `file:///etc/passwd`.
+  document from pointing the render runner at `file:///etc/passwd`.
 
 ---
 
@@ -217,7 +217,7 @@ there is no separate template format that could drift from what the editor reads
 `userId`, `projectId`, `status`, `progress`, `stage`, `format`, `quality`,
 `width`, `height`, `fps`, `durationSeconds`, `projectSnapshot`, `outputUrl`,
 `storagePath`, `fileSize`, `errorCode`, `errorDetail`, `attempt`, `rootJobId`,
-`queueJobId`, timestamps.
+timestamps.
 
 Two deliberate choices:
 

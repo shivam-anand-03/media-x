@@ -10,10 +10,14 @@
 Something already holds the port.
 `PORT=5055 SERVER_APP_URL=http://localhost:5055 pnpm --filter server dev`
 
-**Redis connection refused**
-The API calls `cache.ping()` during boot and exits if it fails. Run `pnpm dev:infra`,
-or point `REDIS_HOST`/`REDIS_PORT` at your instance. (Pre-existing behaviour of this
-codebase, not specific to the studio.)
+**Boot stops at MongoDB**
+`MONGODB_URI` is wrong or the database is unreachable. Mongo is a hard boot gate —
+nothing else starts without it.
+
+**An export sits at `WORKER_UNAVAILABLE` after a restart**
+Expected. Renders run in the API process, so a restart orphans anything in flight;
+the server fails those rows at boot rather than leaving a bar that never moves.
+Retry from the dialog.
 
 **Templates page is empty**
 Seeding runs at boot and logs `🎬 Templates seeded`. If it is missing, MongoDB was
@@ -70,7 +74,7 @@ Policy is enforced *before* a storage key is issued, so the error arrives up fro
 
 | Code | Usual cause |
 |---|---|
-| `WORKER_UNAVAILABLE` | Redis down, no worker running, or Remotion not installed |
+| `WORKER_UNAVAILABLE` | Remotion not installed, or the server restarted mid-render |
 | `ASSET_UNAVAILABLE` | A layer's media URL 404s — see *Media* above |
 | `TIMEOUT` | Exceeded `RENDER_TIMEOUT_MS` (default 10 min) |
 | `INVALID_PROJECT` | The stored snapshot failed schema validation |
@@ -162,8 +166,8 @@ curl -I http://localhost:5030/uploads/<path> -H "Origin: http://localhost:3000"
 # Storage writable? (also runs at boot)
 grep "Storage" <server log>
 
-# Queues
-redis-cli KEYS "bull:video-render:*"
+# In-flight and recent exports
+# (mongosh) db.exportjobs.find({}, {status:1, stage:1, progress:1, errorCode:1}).sort({createdAt:-1}).limit(5)
 
 # Everything green?
 pnpm type-check && pnpm test && pnpm lint

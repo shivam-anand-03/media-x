@@ -1,6 +1,5 @@
 import Transport from "winston-transport";
 import { logService, type CreateLogInput } from "@/core/services/log.service";
-import { logStream, LOG_STREAM_EVENT, type StreamedLog } from "./log-stream";
 
 // Reserved keys that map onto dedicated Log columns. Everything else on the info object is folded into `meta` so nothing is lost.
 const RESERVED = new Set([
@@ -9,7 +8,6 @@ const RESERVED = new Set([
   "timestamp",
   "stack",
   "context",
-  "userId",
   "requestId",
   "method",
   "path",
@@ -19,7 +17,7 @@ const RESERVED = new Set([
   "persist",
 ]);
 
-// A Winston transport that persists logs to MongoDB and streams them to any connected listeners. The transport is designed to be non-blocking and resilient to failures in the persistence layer or the streaming layer.
+// A Winston transport that persists logs to MongoDB. It is non-blocking and swallows persistence failures.
 export class MongoLogTransport extends Transport {
   log(info: any, callback: () => void): void {
     setImmediate(() => this.emit("logged", info));
@@ -42,7 +40,6 @@ export class MongoLogTransport extends Transport {
           ? info.message
           : String(info.message ?? ""),
       context: info.context,
-      userId: info.userId,
       requestId: info.requestId,
       method: info.method,
       path: info.path ?? info.url,
@@ -53,20 +50,10 @@ export class MongoLogTransport extends Transport {
   }
 
   private async handle(info: any): Promise<void> {
-    const input = this.toInput(info);
-
-    let streamed: StreamedLog = {
-      ...input,
-      createdAt: new Date().toISOString(),
-    };
-
     try {
-      const doc = await logService.writeLog(input);
-      streamed = JSON.parse(JSON.stringify(doc)) as StreamedLog;
-    } catch {}
-
-    try {
-      logStream.emit(LOG_STREAM_EVENT, streamed);
-    } catch {}
+      await logService.writeLog(this.toInput(info));
+    } catch {
+      // Logging must never take the process down with it.
+    }
   }
 }

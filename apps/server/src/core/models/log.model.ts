@@ -17,11 +17,6 @@ const logSchema = new Schema(
       type: String,
       trim: true,
     },
-    userId: {
-      type: String,
-      trim: true,
-      index: true,
-    },
     requestId: {
       type: String,
       trim: true,

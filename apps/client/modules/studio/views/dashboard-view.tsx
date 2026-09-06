@@ -23,7 +23,6 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog";
 import { PageHeader, PremiumEmptyState, StatTile } from "@/components/premium";
-import { useUser } from "@/hooks/use-user";
 import {
   useDeleteProjectMutation,
   useDuplicateProjectMutation,
@@ -39,12 +38,11 @@ import { AiGenerateDialog } from "../components/dashboard/ai-generate-dialog";
 /**
  * The workspace dashboard (§6).
  *
- * Greeting, one clear primary action, then the user's work. The metric strip
+ * Greeting, one clear primary action, then your work. The metric strip
  * reports counts derived from the real project list — never invented numbers.
  */
 export function DashboardView() {
   const router = useRouter();
-  const { user } = useUser();
 
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
@@ -73,8 +71,6 @@ export function DashboardView() {
   const total = data?.total ?? 0;
   const exported = projects.filter((p) => p.status === "EXPORTED").length;
 
-  const firstName = user?.firstName?.trim() || "there";
-
   return (
     <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
       <PageHeader
@@ -84,7 +80,7 @@ export function DashboardView() {
             Motion Studio
           </>
         }
-        title={`${greeting()}, ${firstName}`}
+        title={greeting()}
         description="Create something amazing. Design, animate and export short-form advertisements in one workspace."
         actions={
           <>

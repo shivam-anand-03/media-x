@@ -18,20 +18,15 @@ Every response uses the same envelope:
 { "status": "failed", "message": "Project not found.", "details": { /* optional */ } }
 ```
 
-**Auth** is a `access_token` cookie (with `Authorization: Bearer …` also accepted).
-Every studio route requires it. A 401 carrying `TOKEN_EXPIRED` triggers the client's
-automatic refresh-and-retry.
-
-**Ownership** is part of the query, not a check after it. A project that exists but
-is not yours returns **404**, not 403 — a 403 would confirm the id exists.
+**No authentication.** The studio is single-tenant, so every route is open and
+nothing is owner-scoped. Do not expose this API beyond a trusted network without
+adding an auth layer and restoring per-resource ownership together.
 
 | Status | Meaning |
 |---|---|
 | 400 | Validation failed |
-| 401 / 498 | Not authenticated / token expired |
 | 403 | Revision conflict |
-| 404 | Not found, or not yours |
-| 429 | Rate limited |
+| 404 | Not found |
 
 ---
 
@@ -126,7 +121,7 @@ Returns a ticket:
 
 ```jsonc
 { "uploadUrl": "…", "headers": { "Content-Type": "image/png" },
-  "storagePath": "users/<userId>/image/<random>-logo.png",
+  "storagePath": "media/image/<random>-logo.png",
   "publicUrl": "…", "expiresAt": "…" }
 ```
 
@@ -144,8 +139,8 @@ driver's HMAC-signed endpoint.
 ```
 
 Returns **201** with the asset in `PENDING` so the editor can place it immediately;
-verification and thumbnailing happen on the queue. Confirming a key outside your own
-`users/<userId>/` prefix is rejected.
+verification and thumbnailing run in the background. Confirming a key outside the
+`media/` prefix is rejected, so only keys this API issued can be registered.
 
 ### `GET /assets` · `GET /assets/:id` · `DELETE /assets/:id`
 
@@ -176,7 +171,7 @@ previewed or used.
 { "format": "mp4", "quality": "high", "fps": 30 }
 ```
 
-Returns **202** with the queued job and an `estimatedSeconds`.
+Returns **202** with the job row and an `estimatedSeconds`.
 
 Rejects an empty project, and rejects a second export while one is active:
 
@@ -205,8 +200,8 @@ snapshot would just fail again. Returns **202**.
 
 ### `POST /exports/:id/cancel`
 
-Marks cancelled first, then removes the queued job. If it is already rendering, the
-worker discards the output when it finishes.
+Marks cancelled first, then flags the in-flight render. If it is already rendering,
+the runner discards the output when it finishes.
 
 ### `GET /exports/:id/download`
 
@@ -246,14 +241,12 @@ creates a project through `POST /projects`, which validates it again. See
 
 ---
 
-## Sockets
+## Progress reporting
 
-Socket.IO at `NEXT_PUBLIC_WEB_SOCKET_SERVER`, authenticated from the auth cookie
-during the handshake and joined to a per-user room.
+There is no websocket. Long-running work reports by writing to its own row, and the
+client polls:
 
-| Event | Payload |
-|---|---|
-| `EXPORT_PROGRESS` | `{ id, status, progress, stage?, outputUrl?, fileSize?, errorCode? }` |
-| `ASSET_STATUS` | `{ assetId, status, url?, thumbnailUrl? }` |
-
-Sockets are an optimisation, never a requirement — every flow has a polling fallback.
+| Work | Endpoint | Interval |
+|---|---|---|
+| Export render | `GET /exports/:id` | 2.5s while active, stops at a terminal state |
+| Asset processing | `GET /assets/:id` | until the asset leaves `PENDING` |

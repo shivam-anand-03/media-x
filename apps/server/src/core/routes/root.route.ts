@@ -1,4 +1,3 @@
-import authRouter from "@/module/auth/auth.route";
 import projectRouter from "@/module/project/project.route";
 import assetRouter from "@/module/asset/asset.route";
 import templateRouter from "@/module/template/template.route";
@@ -6,10 +5,6 @@ import exportRouter from "@/module/export/export.route";
 import aiRouter from "@/module/ai/ai.route";
 
 export const routes = [
-  {
-    prefix: "auth",
-    route: authRouter,
-  },
   {
     prefix: "projects",
     route: projectRouter,

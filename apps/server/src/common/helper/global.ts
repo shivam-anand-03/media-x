@@ -1,7 +1,5 @@
 import { randomUUID } from "crypto";
 import { Request, Response, NextFunction } from "express";
-import { AuthError } from "../utils/error-utils";
-import { UserModel } from "@/core/models";
 
 export const AsyncHandler = (
   asyncFunction: (
@@ -16,25 +14,6 @@ export const AsyncHandler = (
     } catch (err) {
       next(err);
     }
-  };
-};
-
-export const getAuth = async (req: Request) => {
-  if (!req.user || !req.user.id) {
-    throw new AuthError("Unauthorized access. User info not found.");
-  }
-
-  const userId = req.user.id;
-
-  const user = await UserModel.findById(userId);
-
-  if (!user) {
-    throw new AuthError("User not found in the database.");
-  }
-
-  return {
-    userId: user.id || user._id.toString(),
-    role: user.role,
   };
 };
 

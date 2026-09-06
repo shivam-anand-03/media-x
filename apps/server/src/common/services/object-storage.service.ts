@@ -109,10 +109,14 @@ export function sanitizeFilename(name: string): string {
 
 /** `users/<userId>/<kind>/<random>-<name>` — user-scoped so one user's key can
  *  never collide with, or be guessed from, another's. */
-export function buildStoragePath(userId: string, kind: UploadKind, filename: string): string {
+/** Prefix every uploaded object shares. Confirm checks it, so a client cannot
+ *  claim an arbitrary key such as an export or a path outside the media tree. */
+export const MEDIA_PREFIX = "media";
+
+export function buildStoragePath(kind: UploadKind, filename: string): string {
   const safe = sanitizeFilename(filename);
   const unique = `${Date.now().toString(36)}-${crypto.randomBytes(6).toString("hex")}`;
-  return `users/${userId}/${kind.toLowerCase()}/${unique}-${safe}`;
+  return `${MEDIA_PREFIX}/${kind.toLowerCase()}/${unique}-${safe}`;
 }
 
 // ---------------------------------------------------------------------------

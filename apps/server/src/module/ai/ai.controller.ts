@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { generateAdvertisementSchema, getCanvasPreset } from "@workspace/motion";
 import { ApiResponse, AsyncHandler } from "@/common/utils/api-utils";
 import { ValidationError } from "@/common/utils/error-utils";
-import { getAuth } from "@/common/helper/global";
 import { logger } from "@/common/helper/logger";
 import { planAdvertisement } from "./ad-planner";
 import { compilePlanToDocument } from "./plan-compiler";
@@ -16,7 +15,6 @@ class AiController {
    * again. Generation never writes to the database on its own.
    */
   generateAdvertisementHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
     const input = generateAdvertisementSchema.parse(req.body);
 
     const preset = getCanvasPreset(input.preset);
@@ -32,7 +30,6 @@ class AiController {
     });
 
     logger.info("Advertisement generated", {
-      userId,
       source,
       scenes: document.scenes.length,
       layers: document.layers.length,

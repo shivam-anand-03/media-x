@@ -9,11 +9,11 @@ import { ForbiddenError, NotFoundError, ValidationError } from "@/common/utils/e
 import { ProjectModel, type IProjectDocument } from "@/core/models";
 
 /**
- * Project data access with ownership enforced at the query, not after it.
+ * Project data access.
  *
- * Every lookup filters on `userId` in the same query that finds the document,
- * so there is no window in which a project belonging to someone else has been
- * loaded into memory and is one forgotten `if` away from leaking (§44).
+ * The studio is single-tenant: every project belongs to whoever is using this
+ * instance, so lookups are by id alone. Ids are still validated before they
+ * reach Mongo so a malformed id fails as a 400 rather than a cast error.
  */
 export class ProjectService {
   static toObjectId(id: string, label = "project"): Types.ObjectId {
@@ -23,27 +23,16 @@ export class ProjectService {
     return new Types.ObjectId(id);
   }
 
-  /** Loads a project the user owns, or throws. */
-  static async getOwned(projectId: string, userId: string): Promise<IProjectDocument> {
-    const project = await ProjectModel.findOne({
-      _id: ProjectService.toObjectId(projectId),
-      userId: ProjectService.toObjectId(userId, "user"),
-    });
-
-    if (!project) {
-      // Deliberately a 404, not a 403: telling a stranger that a project id
-      // exists but is not theirs is itself a small leak.
-      throw new NotFoundError("Project not found.");
-    }
+  /** Loads a project by id, or throws. */
+  static async get(projectId: string): Promise<IProjectDocument> {
+    const project = await ProjectModel.findById(ProjectService.toObjectId(projectId));
+    if (!project) throw new NotFoundError("Project not found.");
     return project;
   }
 
-  /** Ownership check without pulling the (potentially large) document. */
-  static async assertOwnership(projectId: string, userId: string): Promise<void> {
-    const exists = await ProjectModel.exists({
-      _id: ProjectService.toObjectId(projectId),
-      userId: ProjectService.toObjectId(userId, "user"),
-    });
+  /** Existence check without pulling the (potentially large) document. */
+  static async assertExists(projectId: string): Promise<void> {
+    const exists = await ProjectModel.exists({ _id: ProjectService.toObjectId(projectId) });
     if (!exists) throw new NotFoundError("Project not found.");
   }
 
@@ -150,13 +139,13 @@ export class ProjectService {
 
   /** List view — never returns `projectData`; the dashboard doesn't need it and
    *  it would be megabytes across 24 cards. */
-  static async list(
-    userId: string,
-    { page, limit, search, status }: { page: number; limit: number; search?: string; status?: string },
-  ) {
-    const filter: Record<string, unknown> = {
-      userId: ProjectService.toObjectId(userId, "user"),
-    };
+  static async list({
+    page,
+    limit,
+    search,
+    status,
+  }: { page: number; limit: number; search?: string; status?: string }) {
+    const filter: Record<string, unknown> = {};
     if (status) filter.status = status;
     if (search) {
       // Escaped so a user searching for "a(b" doesn't produce an invalid regex.

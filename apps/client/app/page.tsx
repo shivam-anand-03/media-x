@@ -12,10 +12,10 @@ export const metadata: Metadata = {
 };
 
 /**
- * The signed-out landing page.
+ * The landing page.
  *
- * Authenticated visitors never see it — middleware redirects `/` to the
- * workspace. It exists to explain the product and route to sign-in.
+ * It exists to explain the product; every call to action opens the workspace
+ * directly, since the studio has no accounts.
  */
 export default function LandingPage() {
   return (
@@ -32,10 +32,10 @@ export default function LandingPage() {
         <div className="flex items-center gap-2">
           <ThemeToggle className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" />
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/sign-in">Sign in</Link>
+            <Link href="/dashboard">Open studio</Link>
           </Button>
           <Button size="sm" asChild>
-            <Link href="/sign-up">Get started</Link>
+            <Link href="/dashboard">Get started</Link>
           </Button>
         </div>
       </header>
@@ -58,13 +58,13 @@ export default function LandingPage() {
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button size="lg" className="gap-1.5" asChild>
-            <Link href="/sign-up">
+            <Link href="/dashboard">
               Start creating
               <ArrowRight className="size-4" />
             </Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
-            <Link href="/sign-in">I already have an account</Link>
+            <Link href="/templates">Browse templates</Link>
           </Button>
         </div>
 

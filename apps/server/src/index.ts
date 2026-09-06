@@ -4,14 +4,12 @@ require("module-alias").addAliases({
 
 import http, { Server as HttpServer } from "http";
 import { envs } from "@/common/configs/envs.config";
-import { cache } from "@/common/configs/redis.config";
-import { startAllQueueWorkers, stopAllWorkers } from "@/common/queue";
 import { logger } from "@/common/helper/logger";
-import { initEventBus } from "@/common/helper/event-bus";
 import { app } from "@/app";
 import { mongoDB as mongoDatabase, vectorDB } from "@/core/database";
 import { seedTemplates } from "@/module/template/template.controller";
 import { objectStorage } from "@/common/services/object-storage.service";
+import { drainRenders, reconcileInterruptedJobs } from "@/renderer/render-runner";
 
 class Server {
   private server: HttpServer;
@@ -33,9 +31,6 @@ class Server {
         process.exit(1);
       });
 
-      await cache.ping();
-      logger.info("Redis connected");
-
       await this.mongoDB.connect();
 
       await this.vector.connect();
@@ -43,6 +38,11 @@ class Server {
       // Idempotent upsert of the bundled template library, so a fresh database
       // never opens on an empty Templates page.
       await seedTemplates();
+
+      // Renders live in this process, so anything still marked running belongs
+      // to a process that no longer exists. Fail those rows now so the user
+      // gets a retry button instead of a bar frozen mid-render.
+      await reconcileInterruptedJobs();
 
       // Storage is only exercised on upload and export, both of which happen
       // long after boot — so check it now, while someone is still looking at
@@ -57,12 +57,6 @@ class Server {
           `🗄️  Storage driver "${storage.name}" cannot write — uploads and exports will fail: ${writable.reason}`,
         );
       }
-
-      startAllQueueWorkers();
-      logger.info("Queue workers started");
-
-      initEventBus(this.server);
-      logger.info("Event bus initialized");
 
       await new Promise<void>((resolve) =>
         this.server.listen(this.port, resolve),
@@ -98,14 +92,13 @@ class Server {
       );
       logger.info("HTTP server closed");
 
-      await stopAllWorkers();
-      logger.info("Queue workers stopped");
+      // Give any render in progress a short window to finish writing its row.
+      await drainRenders();
 
       // Close resources in parallel; a failure in one shouldn't block others
       const results = await Promise.allSettled([
         this.mongoDB.disconnect(),
         this.vector.disconnect(),
-        cache.quit(),
       ]);
       for (const r of results) {
         if (r.status === "rejected") {

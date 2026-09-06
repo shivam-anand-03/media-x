@@ -15,7 +15,6 @@ import type {
  * no cycles to reason about.
  */
 export interface IExportJob {
-  userId: Types.ObjectId;
   projectId: Types.ObjectId;
   status: ExportStatus;
   progress: number;
@@ -42,7 +41,6 @@ export interface IExportJob {
   attempt: number;
   /** Links attempts of the same export lineage together. */
   rootJobId?: Types.ObjectId | null;
-  queueJobId?: string | null;
   startedAt?: Date | null;
   completedAt?: Date | null;
 }
@@ -55,7 +53,6 @@ export interface IExportJobDocument extends IExportJob, Document {
 
 const exportJobSchema = new Schema<IExportJobDocument>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     projectId: { type: Schema.Types.ObjectId, ref: "Project", required: true, index: true },
     status: {
       type: String,
@@ -79,7 +76,6 @@ const exportJobSchema = new Schema<IExportJobDocument>(
     errorDetail: { type: String, default: null },
     attempt: { type: Number, default: 1 },
     rootJobId: { type: Schema.Types.ObjectId, ref: "ExportJob", default: null },
-    queueJobId: { type: String, default: null },
     startedAt: { type: Date, default: null },
     completedAt: { type: Date, default: null },
   },
@@ -102,7 +98,7 @@ const exportJobSchema = new Schema<IExportJobDocument>(
 );
 
 exportJobSchema.index({ projectId: 1, createdAt: -1 });
-exportJobSchema.index({ userId: 1, status: 1, createdAt: -1 });
+exportJobSchema.index({ status: 1, createdAt: -1 });
 
 export const ExportJobModel: Model<IExportJobDocument> =
   (models.ExportJob as Model<IExportJobDocument>) ||

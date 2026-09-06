@@ -22,7 +22,7 @@ Browser                       API                        Storage
    │                                                        │
    │  POST /assets/confirm     │                            │
    │ ─────────────────────────►│  create Asset (PENDING)    │
-   │                           │  enqueue processing ───────►
+   │                           │  start processing ─────────►
 ```
 
 Both drivers implement exactly this, so the client code is identical whether the
@@ -38,8 +38,7 @@ Selected by `STORAGE_DRIVER`.
 
 Files land in `apps/server/uploads/` and are served from `/uploads`.
 
-The upload target is `PUT /v1/assets/upload`, mounted **before** auth because the
-browser sends raw bytes with no cookies. Authorisation comes from an **HMAC-signed
+The upload target is `PUT /v1/assets/upload`. Authorisation comes from an **HMAC-signed
 ticket** binding the key, content type, size and expiry — without it that route
 would be an open write endpoint. Paths are resolved and rejected if they escape the
 uploads root.
@@ -65,7 +64,7 @@ Two different needs, two different mechanisms.
 A saved project references media **by URL, inside the document**. A signed URL would
 expire and silently break the project weeks later. So on GCS, uploaded objects are
 made public after processing. Storage keys are long and random
-(`users/<userId>/<kind>/<timestamp>-<12 hex>-<name>`), so they are not guessable.
+(`media/<kind>/<timestamp>-<12 hex>-<name>`), so they are not guessable.
 
 `makePublic` fails harmlessly on buckets with uniform bucket-level access, where
 per-object ACLs are rejected and access is governed by bucket IAM instead.
@@ -181,14 +180,14 @@ Adding S3, R2 or Azure means implementing this interface and adding a case to
 
 ## Asset processing
 
-After confirm, the `asset-processing` queue:
+After confirm, background asset processing:
 
 1. verifies the object actually landed (`head`) — catching uploads that silently
    failed,
 2. trusts the real byte count over the size the client claimed,
 3. generates a 480px WebP thumbnail for images via `sharp`,
 4. publishes the object on GCS,
-5. flips the asset to `READY` and notifies over the socket.
+5. flips the asset to `READY`; the client polls `GET /assets/:id` until it settles.
 
 A failed thumbnail is a cosmetic downgrade, not a reason to mark a good upload
 broken — `sharp` is imported lazily and its failure is swallowed. A genuinely missing

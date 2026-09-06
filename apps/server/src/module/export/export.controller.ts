@@ -11,19 +11,18 @@ import {
 } from "@workspace/motion";
 import { ApiResponse, AsyncHandler } from "@/common/utils/api-utils";
 import { NotFoundError, ValidationError } from "@/common/utils/error-utils";
-import { getAuth } from "@/common/helper/global";
 import { logger } from "@/common/helper/logger";
 import { ExportJobModel, ProjectModel, type IExportJobDocument } from "@/core/models";
 import { objectStorage } from "@/common/services/object-storage.service";
-import { queueManager } from "@/common/queue/queue-manager";
-import { RenderQueue, RENDER_QUEUE_NAME } from "@/common/queue/render.queue";
+import { cancelRender, startRender } from "@/renderer/render-runner";
 import { ProjectService } from "../project/project.service";
 
 /**
  * Export orchestration (§29–§31).
  *
- * The handler's whole job is: validate, snapshot, persist a QUEUED row, enqueue.
- * Rendering itself never touches the request lifecycle.
+ * The handler's whole job is: validate, snapshot, persist a QUEUED row, start
+ * the render. Rendering itself never touches the request lifecycle — it runs in
+ * the background and reports through the job row, which the client polls.
  */
 /** Content types by export format, for the local streaming path. */
 const CONTENT_TYPES: Record<string, string> = {
@@ -44,15 +43,10 @@ function buildDownloadName(projectName: string, format: string): string {
 }
 
 class ExportController {
-  private get renderQueue(): RenderQueue {
-    return queueManager.get<RenderQueue>(RENDER_QUEUE_NAME);
-  }
-
   /** POST /v1/projects/:id/exports */
   createExportHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
     const body = createExportSchema.parse(req.body);
-    const project = await ProjectService.getOwned(req.params.id as string, userId);
+    const project = await ProjectService.get(req.params.id as string);
 
     // Validate before queueing: failing here gives an immediate, actionable
     // error instead of a job that dies in a worker minutes later.
@@ -76,8 +70,7 @@ class ExportController {
       });
     }
 
-    const job = await this.enqueue({
-      userId,
+    const job = await this.start({
       projectId: project.id,
       document,
       format: body.format,
@@ -97,15 +90,13 @@ class ExportController {
 
   /** GET /v1/exports/:id */
   getExportHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
-    const job = await this.getOwnedJob(req.params.id as string, userId);
+    const job = await this.getJob(req.params.id as string);
     res.status(200).json(new ApiResponse("Export loaded.", job.toJSON()));
   });
 
   /** GET /v1/projects/:id/exports */
   listProjectExportsHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
-    await ProjectService.assertOwnership(req.params.id as string, userId);
+    await ProjectService.assertExists(req.params.id as string);
 
     const jobs = await ExportJobModel.find({ projectId: ProjectService.toObjectId(req.params.id as string) })
       .sort({ createdAt: -1 })
@@ -120,8 +111,7 @@ class ExportController {
    * history of a flaky render survives and the state machine stays acyclic.
    */
   retryExportHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
-    const previous = await this.getOwnedJob(req.params.id as string, userId);
+    const previous = await this.getJob(req.params.id as string);
 
     if (!canRetry(previous.status)) {
       throw new ValidationError(
@@ -131,13 +121,12 @@ class ExportController {
       );
     }
 
-    const project = await ProjectService.getOwned(previous.projectId.toString(), userId);
+    const project = await ProjectService.get(previous.projectId.toString());
     // Re-snapshot from the live project: the user has probably fixed whatever
     // broke, and retrying the identical bad snapshot would just fail again.
     const document = parseProjectDocument(project.projectData);
 
-    const job = await this.enqueue({
-      userId,
+    const job = await this.start({
       projectId: project.id,
       document,
       format: previous.format,
@@ -153,8 +142,7 @@ class ExportController {
 
   /** POST /v1/exports/:id/cancel */
   cancelExportHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
-    const job = await this.getOwnedJob(req.params.id as string, userId);
+    const job = await this.getJob(req.params.id as string);
 
     if (!canCancel(job.status)) {
       throw new ValidationError("This export has already finished.");
@@ -166,7 +154,7 @@ class ExportController {
       { _id: job._id },
       { status: "CANCELLED", errorCode: "CANCELLED", completedAt: new Date() },
     );
-    await this.renderQueue.cancelRender(job.id).catch(() => {});
+    cancelRender(job.id);
 
     const updated = await ExportJobModel.findById(job._id);
     res.status(200).json(new ApiResponse("Export cancelled.", updated?.toJSON()));
@@ -175,8 +163,8 @@ class ExportController {
   /**
    * GET /v1/exports/:id/download
    *
-   * The only way a rendered video leaves the system. Ownership is checked here,
-   * so the bucket itself never has to be public:
+   * The only way a rendered video leaves the system, so the bucket itself never
+   * has to be public:
    *   - GCS   → redirect to a short-lived signed URL carrying a
    *             Content-Disposition header (a cross-origin `<a download>` is
    *             ignored by browsers, so the header must come from storage).
@@ -185,8 +173,7 @@ class ExportController {
    * `?disposition=inline` is used by the dialog's Preview button.
    */
   downloadExportHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
-    const job = await this.getOwnedJob(req.params.id as string, userId);
+    const job = await this.getJob(req.params.id as string);
 
     if (job.status !== "COMPLETED" || !job.storagePath) {
       throw new ValidationError("This export has not finished rendering yet.");
@@ -216,14 +203,13 @@ class ExportController {
       expiresInMinutes: 15,
     });
 
-    logger.info("Export download issued", { exportJobId: job.id, userId, disposition });
+    logger.info("Export download issued", { exportJobId: job.id, disposition });
     return res.redirect(302, url);
   });
 
   // -------------------------------------------------------------------------
 
-  private async enqueue(input: {
-    userId: string;
+  private async start(input: {
     projectId: string;
     document: ReturnType<typeof parseProjectDocument>;
     format: "mp4" | "webm" | "gif";
@@ -235,7 +221,6 @@ class ExportController {
     const { width, height } = resolveOutputSize(input.document, input.quality);
 
     const job = await ExportJobModel.create({
-      userId: new Types.ObjectId(input.userId),
       projectId: new Types.ObjectId(input.projectId),
       status: "QUEUED",
       progress: 0,
@@ -252,37 +237,16 @@ class ExportController {
       rootJobId: input.rootJobId,
     });
 
-    try {
-      const queued = await this.renderQueue.queueRender({
-        exportJobId: job.id,
-        userId: input.userId,
-        projectId: input.projectId,
-      });
-      job.queueJobId = queued.id ?? null;
-      await job.save();
-    } catch (error) {
-      // Redis down, or no worker registered. Fail the row immediately so the
-      // dialog shows a real error instead of a bar that never moves.
-      logger.error("Could not enqueue render job", {
-        exportJobId: job.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      job.status = "FAILED";
-      job.errorCode = "WORKER_UNAVAILABLE";
-      job.errorDetail = error instanceof Error ? error.message : String(error);
-      job.completedAt = new Date();
-      await job.save();
-    }
+    // Runs in the background on this process; the row is the only channel back
+    // to the client, so nothing is awaited here.
+    startRender(job.id, input.projectId);
 
     return job;
   }
 
-  private async getOwnedJob(id: string, userId: string): Promise<IExportJobDocument> {
+  private async getJob(id: string): Promise<IExportJobDocument> {
     if (!Types.ObjectId.isValid(id)) throw new ValidationError("Invalid export id.");
-    const job = await ExportJobModel.findOne({
-      _id: new Types.ObjectId(id),
-      userId: new Types.ObjectId(userId),
-    });
+    const job = await ExportJobModel.findById(id);
     if (!job) throw new NotFoundError("Export not found.");
     return job;
   }

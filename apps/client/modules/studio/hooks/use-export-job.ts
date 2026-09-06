@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { isActive, type ExportFormat, type ExportQuality } from "@workspace/motion";
-import { useSocket } from "@/hooks/use-socket";
 import {
   useCancelExportMutation,
   useCreateExportMutation,
@@ -14,27 +13,15 @@ import {
 /**
  * Tracks one export job to completion.
  *
- * Progress arrives two ways on purpose: the socket pushes updates the moment
- * the worker emits them, and a poll runs as a fallback so a dropped websocket
- * (or a worker on another instance) can't leave the bar frozen. Polling stops
- * as soon as the job reaches a terminal state.
+ * The render runs in the API process and reports by writing to the export job
+ * row, so progress is read by polling that row. `live` holds whatever the
+ * create/retry/cancel call returned, which lands before the first poll does.
+ * Polling stops as soon as the job reaches a terminal state.
  */
 
 const POLL_INTERVAL = 2500;
 
-interface ExportProgressEvent {
-  id: string;
-  status: ExportJobResponse["status"];
-  progress: number;
-  stage?: ExportJobResponse["stage"];
-  outputUrl?: string;
-  fileSize?: number;
-  errorCode?: string;
-}
-
 export function useExportJob(projectId: string | null) {
-  const { socket } = useSocket();
-
   const [jobId, setJobId] = React.useState<string | null>(null);
   const [live, setLive] = React.useState<ExportJobResponse | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -49,8 +36,8 @@ export function useExportJob(projectId: string | null) {
     pollingInterval: live && !isActive(live.status) ? 0 : POLL_INTERVAL,
   });
 
-  // The socket is usually ahead of the poll, so prefer whichever reports more
-  // progress — this stops the bar visibly jumping backwards.
+  // Prefer whichever source reports more progress — this stops the bar visibly
+  // jumping backwards when a poll lands before an optimistic local update.
   const job = React.useMemo(() => {
     if (!live) return polled ?? null;
     if (!polled) return live;
@@ -58,25 +45,6 @@ export function useExportJob(projectId: string | null) {
     if (!isActive(live.status)) return live;
     return polled.progress > live.progress ? polled : live;
   }, [live, polled]);
-
-  React.useEffect(() => {
-    if (!socket || !jobId) return;
-
-    const onProgress = (payload: ExportProgressEvent) => {
-      if (payload.id !== jobId) return;
-      setLive((current) => ({
-        ...(current ?? ({} as ExportJobResponse)),
-        ...payload,
-        id: payload.id,
-        errorCode: payload.errorCode ?? current?.errorCode ?? null,
-      }));
-    };
-
-    socket.on("EXPORT_PROGRESS", onProgress);
-    return () => {
-      socket.off("EXPORT_PROGRESS", onProgress);
-    };
-  }, [socket, jobId]);
 
   const start = React.useCallback(
     async (options: { format: ExportFormat; quality: ExportQuality }) => {

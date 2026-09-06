@@ -43,7 +43,6 @@ export class RenderError extends Error {
 export interface RenderInput {
   document: ProjectDocument;
   exportJobId: string;
-  userId: string;
   format: ExportFormat;
   quality: ExportQuality;
   width: number;
@@ -142,7 +141,7 @@ export class RenderService {
   }
 
   static async render(input: RenderInput): Promise<RenderOutput> {
-    const { document: doc, exportJobId, userId, format, quality, width, height, fps } = input;
+    const { document: doc, exportJobId, format, quality, width, height, fps } = input;
 
     let renderer: typeof import("@remotion/renderer");
     try {
@@ -231,7 +230,7 @@ export class RenderService {
       await input.onProgress("uploading", 0.1);
 
       const buffer = await fs.readFile(outputPath);
-      const storagePath = `users/${userId}/exports/${exportJobId}.${EXTENSIONS[format]}`;
+      const storagePath = `exports/${exportJobId}.${EXTENSIONS[format]}`;
       const url = await objectStorage()
         .putBuffer(storagePath, buffer, CONTENT_TYPES[format])
         .catch((error) => {

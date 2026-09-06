@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.9.0",
-    "async-mutex": "^0.5.0",
     "react-redux": "^9.2.0"
   },
   "peerDependencies": {

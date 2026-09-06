@@ -22,7 +22,6 @@ export const AssetStatus = {
 export type AssetStatus = (typeof AssetStatus)[keyof typeof AssetStatus];
 
 export interface IAsset {
-  userId: Types.ObjectId;
   /** Null for library assets that are not scoped to a single project. */
   projectId?: Types.ObjectId | null;
   type: AssetType;
@@ -51,7 +50,6 @@ export interface IAssetDocument extends IAsset, Document {
 
 const assetSchema = new Schema<IAssetDocument>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     projectId: { type: Schema.Types.ObjectId, ref: "Project", default: null, index: true },
     type: { type: String, enum: Object.values(AssetType), required: true },
     status: { type: String, enum: Object.values(AssetStatus), default: AssetStatus.PENDING },
@@ -82,8 +80,8 @@ const assetSchema = new Schema<IAssetDocument>(
   },
 );
 
-assetSchema.index({ userId: 1, createdAt: -1 });
-assetSchema.index({ userId: 1, type: 1, createdAt: -1 });
+assetSchema.index({ createdAt: -1 });
+assetSchema.index({ type: 1, createdAt: -1 });
 
 export const AssetModel: Model<IAssetDocument> =
   (models.Asset as Model<IAssetDocument>) || model<IAssetDocument>("Asset", assetSchema);

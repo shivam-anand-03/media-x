@@ -21,7 +21,6 @@ export const errorMiddleware: ErrorRequestHandler = (err, req, res, _next) => {
       method: req.method,
       path: req.originalUrl,
       statusCode,
-      userId: (req as any).user?.id,
       ...(level === "error" && err?.stack ? { stack: err.stack } : {}),
     },
   );

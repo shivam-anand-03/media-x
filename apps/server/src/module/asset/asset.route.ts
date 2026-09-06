@@ -1,5 +1,4 @@
 import { Router, raw } from "express";
-import { requireAuth } from "@/core/middleware/auth.middleware";
 import assetController from "./asset.controller";
 
 const assetRouter: Router = Router();
@@ -7,9 +6,9 @@ const assetRouter: Router = Router();
 /**
  * The local-driver upload target.
  *
- * Mounted before `requireAuth` because the browser PUTs raw bytes here with no
- * cookies; authorisation comes from the HMAC-signed ticket instead, which is
- * bound to the exact key, content type, size and expiry. `raw` gives the
+ * Authorisation comes from the HMAC-signed ticket, which is bound to the exact
+ * key, content type, size and expiry — so this stays a closed write endpoint
+ * even though the browser PUTs raw bytes to it directly. `raw` gives the
  * handler a Buffer rather than express.json trying to parse an image.
  */
 assetRouter.put(
@@ -18,7 +17,6 @@ assetRouter.put(
   assetController.localUploadHandler,
 );
 
-assetRouter.use(requireAuth);
 
 assetRouter.post("/upload-url", assetController.requestUploadHandler);
 assetRouter.post("/confirm", assetController.confirmUploadHandler);

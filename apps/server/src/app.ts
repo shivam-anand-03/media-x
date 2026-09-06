@@ -1,11 +1,9 @@
 import cors from "cors";
 import express, { Application } from "express";
 import helmet from "helmet";
-import cookieParser from "cookie-parser";
 import path from "path";
 import { routes } from "@/core/routes/root.route";
 import { envs } from "@/common/configs/envs.config";
-import rateLimiter from "./core/middleware/rate-limiter.middleware";
 import { errorMiddleware } from "@/core/middleware/error.middleware";
 import { requestLogger } from "./core/middleware/request-logger.middleware";
 export class App {
@@ -21,11 +19,8 @@ export class App {
     this.app.use(helmet());
     this.app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
 
-    this.app.use(rateLimiter);
-
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
-    this.app.use(cookieParser());
 
     // CORS must be registered *before* the static mount below. The editor loads
     // uploaded media with crossOrigin="anonymous" (so the canvas stays untainted
@@ -34,12 +29,7 @@ export class App {
     // included.
     this.app.use(
       cors({
-        origin: [
-          envs.CLIENT_APP_URL,
-          envs.SERVER_APP_URL,
-          envs.ADMIN_WEB_APP_URL,
-          "*",
-        ],
+        origin: [envs.CLIENT_APP_URL, envs.SERVER_APP_URL, "*"],
         credentials: true,
       }),
     );

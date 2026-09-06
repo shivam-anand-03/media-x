@@ -1,6 +1,6 @@
 import { combineReducers } from "@reduxjs/toolkit";
 import { createApi } from "@reduxjs/toolkit/query/react";
-import { createBaseQueryWithReauth, type BaseQueryConfig } from "./base-query";
+import { createBaseQuery, type BaseQueryConfig } from "./base-query";
 
 export interface ApiServicesConfig extends BaseQueryConfig {
   /**
@@ -13,19 +13,19 @@ export interface ApiServicesConfig extends BaseQueryConfig {
 }
 
 /**
- * Creates an empty RTK Query API instance wired to the shared re-auth base
- * query. Feature modules extend it with `apiServices.injectEndpoints(...)`.
+ * Creates an empty RTK Query API instance wired to the shared base query.
+ * Feature modules extend it with `apiServices.injectEndpoints(...)`.
  *
  * Each app calls this once and shares the returned singleton, so endpoint
  * injection keeps working exactly as before — only the configuration (base
- * URL, tag types, logout behaviour) now lives at the call site.
+ * URL, tag types) lives at the call site.
  */
 export function createApiServices(config: ApiServicesConfig) {
   const { tagTypes = [], reducerPath = "api", ...baseQueryConfig } = config;
 
   return createApi({
     reducerPath,
-    baseQuery: createBaseQueryWithReauth(baseQueryConfig),
+    baseQuery: createBaseQuery(baseQueryConfig),
     endpoints: () => ({}),
     tagTypes: [...tagTypes],
   });

@@ -3,7 +3,6 @@ import { ViewTransitions } from "next-view-transitions";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "@workspace/ui/components/sonner";
 import { StoreProvider } from "@/data-access/redux-service";
-import { SocketProvider } from "./socket-provider";
 import { ThemeProvider } from "./theme-provider";
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -33,9 +32,7 @@ export const AppRootProviders = ({
                 style: { top: "20px" },
               }}
             />
-            <SocketProvider>
-              <AppLayout>{children}</AppLayout>
-            </SocketProvider>
+            <AppLayout>{children}</AppLayout>
           </ViewTransitions>
         </NuqsAdapter>
       </StoreProvider>

@@ -19,7 +19,7 @@ import { HeuristicAdPlanner } from "../ai/ad-planner";
 /**
  * Server-side domain tests (§50).
  *
- * These deliberately avoid Mongo and Redis: they cover the pure logic that
+ * These deliberately avoid Mongo: they cover the pure logic that
  * decides whether a render is safe to start, whether a document survives a
  * format change, and whether generated content is valid — the parts where a
  * bug corrupts a user's project rather than just failing a request.
@@ -143,7 +143,6 @@ describe("export job serialisation", () => {
     // copy. When the field was named `error` in the shared view type, every
     // failure silently collapsed into the generic fallback message.
     const job = new ExportJobModel({
-      userId: new Types.ObjectId(),
       projectId: new Types.ObjectId(),
       status: "FAILED",
       width: 1080,

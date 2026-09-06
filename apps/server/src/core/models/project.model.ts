@@ -21,7 +21,6 @@ export const ProjectStatus = {
 export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus];
 
 export interface IProject {
-  userId: Types.ObjectId;
   name: string;
   description?: string | null;
   width: number;
@@ -50,7 +49,6 @@ export interface IProjectDocument extends IProject, Document {
 
 const projectSchema = new Schema<IProjectDocument>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     name: { type: String, required: true, trim: true, maxlength: 120 },
     description: { type: String, default: null, maxlength: 500 },
     width: { type: Number, required: true },
@@ -88,8 +86,8 @@ const projectSchema = new Schema<IProjectDocument>(
 
 // The dashboard's default view: this user's projects, most recently touched
 // first. Compound so the sort is served by the index rather than in memory.
-projectSchema.index({ userId: 1, updatedAt: -1 });
-projectSchema.index({ userId: 1, status: 1, updatedAt: -1 });
+projectSchema.index({ updatedAt: -1 });
+projectSchema.index({ status: 1, updatedAt: -1 });
 
 export const ProjectModel: Model<IProjectDocument> =
   (models.Project as Model<IProjectDocument>) || model<IProjectDocument>("Project", projectSchema);

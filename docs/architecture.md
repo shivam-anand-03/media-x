@@ -55,9 +55,9 @@ So they are not three implementations.
 | `@workspace/motion` | zod | Domain core. Pure TypeScript — runs in a browser, in Node, and inside a webpack bundle. |
 | `@workspace/renderer` | motion, react, remotion | The DOM renderer. `./preview` is a browser-safe entry with no Remotion runtime. |
 | `client` | motion, renderer, ui | Next.js app. All editor code under `modules/studio/`. |
-| `server` | motion, renderer | Express API, BullMQ workers, Remotion render service. |
+| `server` | motion, renderer | Express API, in-process render runner, Remotion render service. |
 | `@workspace/ui` | — | shadcn/ui components and design tokens (pre-existing). |
-| `@workspace/data-access` | RTK Query | Base query with auth refresh (pre-existing). |
+| `@workspace/data-access` | RTK Query | Shared base query and store wiring (pre-existing). |
 
 `@workspace/motion` deliberately has **one** dependency. It is imported by a browser
 bundle, a CommonJS Node build and a Remotion webpack bundle; anything heavier would
@@ -89,17 +89,14 @@ memory; persistence trails behind it.
 POST /projects/:id/exports
    → validate the document (zod)
    → snapshot it onto an ExportJob row (QUEUED)
-   → enqueue on BullMQ  ──────────► Redis
-                                      │
-                          render worker picks it up
+   → startRender() ───────────────► render-runner (same process, async)
                                       │
    ┌──────────────────────────────────┴───────────────────┐
    │ validate → prepare → render → encode → upload → done │
    │           Remotion (Chrome)     FFmpeg    storage     │
    └──────────────────────────────────┬───────────────────┘
                                       │
-              progress → socket ──────┴──► export dialog
-                       → ExportJob row ──► polling fallback
+                    progress → ExportJob row ──► export dialog polls
 ```
 
 Rendering never happens inside an HTTP request. Full detail in
@@ -111,11 +108,27 @@ Rendering never happens inside an HTTP request. Full detail in
 
 ### MongoDB, not Prisma/Postgres
 
-The brief asked for Prisma + Postgres. This repo already had MongoDB, Mongoose
-models, auth built on them, and a `BaseQueueService`. Switching would have meant
-rewriting authentication for no user-visible gain. The project document is stored as
-one `Mixed` subdocument — Mongo's native equivalent of the JSONB column the brief
-described. Its shape is owned by the zod schema, not by Mongoose.
+The brief asked for Prisma + Postgres. This repo already had MongoDB and Mongoose
+models, and switching would have meant rewriting the whole data layer for no
+user-visible gain. The project document is stored as one `Mixed` subdocument —
+Mongo's native equivalent of the JSONB column the brief described. Its shape is owned
+by the zod schema, not by Mongoose.
+
+### No broker, no Redis
+
+Renders run in the API process behind a small concurrency semaphore, and the export
+job row in MongoDB carries all progress. That removes Redis, BullMQ and Socket.IO
+from the stack: one less service to install, configure and keep reachable. The cost
+is that renders do not survive a restart and the API cannot be scaled horizontally
+without reintroducing a queue — see [rendering.md](rendering.md) for how orphaned
+jobs are reconciled at boot.
+
+### No authentication
+
+The studio is single-tenant: whoever reaches the instance owns everything on it.
+Projects, assets and exports carry no owner, and every route is open. If this is ever
+exposed beyond a trusted network it needs an auth layer *and* per-resource ownership
+restored — the two have to come back together.
 
 ### RTK Query, not TanStack Query
 
@@ -177,7 +190,7 @@ The editor stays responsive on large projects through a few specific choices.
 | Missing project vs. not yours | Both return 404; a 403 would confirm the id exists |
 | Untrusted documents | zod-parsed at every entry point, including inside the render worker |
 | Uploads | MIME allow-list and size cap enforced *before* a storage key is issued |
-| Upload keys | `users/<userId>/…`; confirming a key outside your own prefix is rejected |
+| Upload keys | `media/…`; confirming a key outside that prefix is rejected |
 | Local upload endpoint | HMAC-signed ticket binding key, content type, size and expiry |
 | Downloads | Ownership checked, then a short-lived signed URL — the bucket stays private |
 | Error detail | Stack traces are logged server-side; the client receives a code |
@@ -209,6 +222,6 @@ apps/server/src/
   module/template/  browse + seeding
   module/ai/        planner (LLM + offline) and deterministic compiler
   renderer/         Remotion + FFmpeg render service
-  common/queue/     render, asset, email queues
+  renderer/render-runner.ts   in-process render scheduling
   core/models/      project, asset, template, export-job
 ```

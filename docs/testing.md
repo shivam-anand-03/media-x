@@ -22,7 +22,7 @@ pnpm lint
 pnpm build
 ```
 
-**99 tests.** No database, no Redis, no network — they run anywhere in about a second.
+**99 tests.** No database, no network — they run anywhere in about a second.
 
 ---
 
@@ -96,7 +96,7 @@ Deliberate gaps, with the reasoning:
 - **Remotion rendering** — needs headless Chrome and minutes per run. Verified
   manually instead (see below).
 - **HTTP layer** — controllers are thin wrappers over tested services; covering them
-  would mean a live Mongo and Redis for little signal.
+  would mean a live Mongo for little signal.
 - **Component rendering** — no DOM tests. The logic worth testing lives in the store
   and the domain package.
 
@@ -104,15 +104,14 @@ Deliberate gaps, with the reasoning:
 
 ## Manual verification performed
 
-The parts that cannot be unit-tested were driven end to end against real MongoDB,
-Redis and a live worker:
+The parts that cannot be unit-tested were driven end to end against real MongoDB:
 
-**Full API flow** — auth guards return 401; register; login; templates seeded (10,
+**Full API flow** — templates seeded (10,
 with real layer/scene counts); create from template with a format change; autosave;
 stale-revision conflict correctly rejected with `REVISION_CONFLICT`; reload returns
 the saved state.
 
-**Export pipeline** — queued → `PROCESSING` → progressing through stages →
+**Export pipeline** — `QUEUED` → `PROCESSING` → progressing through stages →
 `COMPLETED`, producing a **504,637-byte MP4**. The file was inspected rather than
 assumed:
 

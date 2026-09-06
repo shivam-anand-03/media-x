@@ -9,7 +9,6 @@ import {
 } from "@workspace/motion";
 import { ApiResponse, AsyncHandler } from "@/common/utils/api-utils";
 import { NotFoundError, ValidationError } from "@/common/utils/error-utils";
-import { getAuth } from "@/common/helper/global";
 import { logger } from "@/common/helper/logger";
 import { ProjectModel, ProjectStatus, TemplateModel, ExportJobModel } from "@/core/models";
 import { ProjectService } from "./project.service";
@@ -17,7 +16,6 @@ import { ProjectService } from "./project.service";
 class ProjectController {
   /** POST /v1/projects */
   createProjectHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
     const body = createProjectSchema.parse(req.body);
 
     let seed: MotionDocument | undefined = body.document;
@@ -34,7 +32,6 @@ class ProjectController {
     const document = ProjectService.buildInitialDocument(body.canvas, seed);
 
     const project = await ProjectModel.create({
-      userId: ProjectService.toObjectId(userId, "user"),
       name: body.name,
       description: body.description ?? null,
       width: document.canvas.width,
@@ -48,23 +45,21 @@ class ProjectController {
       revision: 1,
     });
 
-    logger.info("Project created", { projectId: project.id, userId, template: body.templateSlug });
+    logger.info("Project created", { projectId: project.id, template: body.templateSlug });
 
     res.status(201).json(new ApiResponse("Project created.", ProjectService.toDetail(project)));
   });
 
   /** GET /v1/projects */
   listProjectsHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
     const query = listProjectsSchema.parse(req.query);
-    const result = await ProjectService.list(userId, query);
+    const result = await ProjectService.list(query);
     res.status(200).json(new ApiResponse("Projects loaded.", result));
   });
 
   /** GET /v1/projects/:id */
   getProjectHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
-    const project = await ProjectService.getOwned(req.params.id as string, userId);
+    const project = await ProjectService.get(req.params.id as string);
 
     // Fire-and-forget: a failed recency stamp must not fail opening the editor.
     ProjectModel.updateOne({ _id: project._id }, { lastOpenedAt: new Date() }).catch(() => {});
@@ -74,9 +69,8 @@ class ProjectController {
 
   /** PATCH /v1/projects/:id — the autosave endpoint. */
   updateProjectHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
     const body = updateProjectSchema.parse(req.body);
-    const project = await ProjectService.getOwned(req.params.id as string, userId);
+    const project = await ProjectService.get(req.params.id as string);
 
     if (body.name !== undefined) project.name = body.name;
     if (body.description !== undefined) project.description = body.description;
@@ -107,25 +101,22 @@ class ProjectController {
 
   /** DELETE /v1/projects/:id */
   deleteProjectHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
-    const project = await ProjectService.getOwned(req.params.id as string, userId);
+    const project = await ProjectService.get(req.params.id as string);
 
     await ProjectModel.deleteOne({ _id: project._id });
     // Exports reference a project that no longer exists; drop them together so
     // the user's export history can't show orphans.
     await ExportJobModel.deleteMany({ projectId: project._id }).catch(() => {});
 
-    logger.info("Project deleted", { projectId: project.id, userId });
+    logger.info("Project deleted", { projectId: project.id });
     res.status(200).json(new ApiResponse("Project deleted."));
   });
 
   /** POST /v1/projects/:id/duplicate */
   duplicateProjectHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
-    const source = await ProjectService.getOwned(req.params.id as string, userId);
+    const source = await ProjectService.get(req.params.id as string);
 
     const copy = await ProjectModel.create({
-      userId: source.userId,
       name: `${source.name} copy`.slice(0, 120),
       description: source.description,
       width: source.width,
@@ -148,12 +139,11 @@ class ProjectController {
    * Rescales every layer so the composition survives the change.
    */
   changeCanvasHandler = AsyncHandler(async (req: Request, res: Response) => {
-    const { userId } = await getAuth(req);
     const presetId = String(req.body?.preset ?? "");
     const preset = getCanvasPreset(presetId);
     if (!preset) throw new ValidationError("Unknown canvas preset.");
 
-    const project = await ProjectService.getOwned(req.params.id as string, userId);
+    const project = await ProjectService.get(req.params.id as string);
     const current = parseProjectDocument(project.projectData);
 
     const next = ProjectService.rescaleDocument(current, {
