@@ -10,7 +10,7 @@ import type {
   TextProperties,
   Transition,
 } from "../schema";
-import { TYPOGRAPHY_PRESETS, type TypographyPreset } from "../presets";
+import { estimateTextWidth, TYPOGRAPHY_PRESETS, type TypographyPreset } from "../presets";
 
 /**
  * A compact builder for authoring templates.
@@ -127,8 +127,12 @@ export class TemplateBuilder {
     const props: TextProperties = { ...preset.properties, text, fontSize: Math.round(this.canvas.width * preset.sizeRatio), ...overrides };
 
     const lines = text.split("\n");
-    const longest = lines.reduce((m, l) => Math.max(m, l.length), 1);
-    const width = Math.min(this.canvas.width * 0.92, Math.max(props.fontSize * 2, longest * props.fontSize * 0.56)) + props.paddingX * 2;
+    const width =
+      Math.min(
+        this.canvas.width * 0.92,
+        Math.max(props.fontSize * 2, estimateTextWidth(text, props.fontSize, props)),
+      ) +
+      props.paddingX * 2;
     const height = lines.length * props.fontSize * props.lineHeight + props.paddingY * 2;
 
     this.layers.push({

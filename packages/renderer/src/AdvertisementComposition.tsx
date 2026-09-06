@@ -34,7 +34,7 @@ export type AdvertisementCompositionProps = {
 
 export const AdvertisementComposition: React.FC<AdvertisementCompositionProps> = ({ document: raw }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
 
   // inputProps cross a process boundary as JSON. Re-validating here means a
   // malformed document fails the render loudly instead of painting a black
@@ -44,21 +44,39 @@ export const AdvertisementComposition: React.FC<AdvertisementCompositionProps> =
 
   useFontsReady();
 
+  /**
+   * The stage always lays out at the document's native canvas size, while the
+   * composition is sized to the *export* resolution (a draft render is half
+   * size). Scaling here bridges the two — without it, anything below 100%
+   * quality would capture only the top-left corner of the artwork.
+   */
+  const scale = Math.min(width / doc.canvas.width, height / doc.canvas.height);
+
   return (
     <AbsoluteFill style={{ backgroundColor: "#000000" }}>
-      <AdvertisementStage
-        document={doc}
-        time={time}
-        renderVideo={({ src, style, volume, muted, playbackRate, trimStart }) => (
-          <OffthreadVideo
-            src={src}
-            style={style}
-            volume={muted ? 0 : volume}
-            playbackRate={playbackRate}
-            startFrom={Math.round(trimStart * fps)}
-          />
-        )}
-      />
+      <AbsoluteFill
+        style={{
+          // Scale from the top-left, then centre whatever letterboxing remains.
+          transform: `translate(${(width - doc.canvas.width * scale) / 2}px, ${(height - doc.canvas.height * scale) / 2}px) scale(${scale})`,
+          transformOrigin: "top left",
+          width: doc.canvas.width,
+          height: doc.canvas.height,
+        }}
+      >
+        <AdvertisementStage
+          document={doc}
+          time={time}
+          renderVideo={({ src, style, volume, muted, playbackRate, trimStart }) => (
+            <OffthreadVideo
+              src={src}
+              style={style}
+              volume={muted ? 0 : volume}
+              playbackRate={playbackRate}
+              startFrom={Math.round(trimStart * fps)}
+            />
+          )}
+        />
+      </AbsoluteFill>
 
       {doc.audioTracks.map((track) => {
         const from = Math.round(track.startTime * fps);

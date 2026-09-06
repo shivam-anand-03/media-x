@@ -109,6 +109,10 @@ export class ProjectService {
               fontSize: Math.max(1, Math.round(layer.properties.fontSize * scale)),
               paddingX: Math.round(layer.properties.paddingX * scale),
               paddingY: Math.round(layer.properties.paddingY * scale),
+              // Letter spacing is in pixels, so it has to shrink with the type.
+              // Leaving it fixed makes tracked captions overflow their box and
+              // wrap once the font gets smaller.
+              letterSpacing: layer.properties.letterSpacing * scale,
             },
           };
         }

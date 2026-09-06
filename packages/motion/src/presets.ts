@@ -310,12 +310,47 @@ function baseLayer(ctx: LayerFactoryContext, width: number, height: number) {
   };
 }
 
-/** Rough single-line text box size — good enough for initial placement; the
- *  editor measures precisely once the node mounts. */
-function textBoxSize(text: string, fontSize: number, lineHeight: number, canvasWidth: number) {
+/**
+ * Estimates the width a string needs, without measuring it.
+ *
+ * A flat "0.56em per character" guess is what made bold uppercase headlines
+ * wrap mid-word: capitals are noticeably wider than lowercase, heavy weights
+ * wider again, and letter spacing adds a fixed amount per character that no
+ * em-based factor accounts for. Getting this close matters because the box it
+ * produces is what the renderer wraps inside.
+ *
+ * Deliberately errs slightly wide — an over-wide box is invisible, a too-narrow
+ * one breaks a word in half.
+ */
+export function estimateTextWidth(
+  text: string,
+  fontSize: number,
+  options: { fontWeight?: number; textTransform?: string; letterSpacing?: number } = {},
+): number {
+  const { fontWeight = 400, textTransform = "none", letterSpacing = 0 } = options;
+
+  // Average advance width per glyph, as a fraction of the em, for Inter-like faces.
+  const weightFactor = fontWeight >= 700 ? 0.6 : fontWeight >= 500 ? 0.56 : 0.53;
+  const capsFactor = textTransform === "uppercase" ? 1.16 : 1;
+
+  const longest = text.split("\n").reduce((max, line) => Math.max(max, line.length), 1);
+  return longest * (fontSize * weightFactor * capsFactor + letterSpacing);
+}
+
+/** Rough text box size — good enough for initial placement; the editor lets the
+ *  user resize from there. */
+function textBoxSize(
+  text: string,
+  fontSize: number,
+  lineHeight: number,
+  canvasWidth: number,
+  options: { fontWeight?: number; textTransform?: string; letterSpacing?: number } = {},
+) {
   const lines = text.split("\n");
-  const longest = lines.reduce((max, line) => Math.max(max, line.length), 1);
-  const width = Math.min(canvasWidth * 0.9, Math.max(fontSize * 2, longest * fontSize * 0.56));
+  const width = Math.min(
+    canvasWidth * 0.92,
+    Math.max(fontSize * 2, estimateTextWidth(text, fontSize, options)),
+  );
   const height = lines.length * fontSize * lineHeight;
   return { width, height };
 }
@@ -327,7 +362,11 @@ export function createTextLayer(
 ): Layer {
   const preset = TYPOGRAPHY_PRESETS.find((p) => p.id === presetId) ?? TYPOGRAPHY_PRESETS[0]!;
   const fontSize = Math.round(ctx.canvasWidth * preset.sizeRatio);
-  const { width, height } = textBoxSize(text, fontSize, preset.properties.lineHeight, ctx.canvasWidth);
+  const { width, height } = textBoxSize(text, fontSize, preset.properties.lineHeight, ctx.canvasWidth, {
+    fontWeight: preset.properties.fontWeight,
+    textTransform: preset.properties.textTransform,
+    letterSpacing: preset.properties.letterSpacing,
+  });
   return {
     ...baseLayer(
       ctx,
