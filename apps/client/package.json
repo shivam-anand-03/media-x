@@ -9,7 +9,8 @@
     "start": "next start --port 3000",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -47,7 +48,10 @@
     "usehooks-ts": "^3.1.1",
     "vaul": "^1.1.2",
     "zod": "^4.1.12",
-    "zustand": "^5.0.13"
+    "zustand": "^5.0.13",
+    "@workspace/motion": "workspace:*",
+    "konva": "^10.3.3",
+    "react-konva": "^19.2.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.3",
@@ -59,6 +63,7 @@
     "@workspace/eslint-config": "workspace:^",
     "@workspace/typescript-config": "workspace:*",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   }
 }

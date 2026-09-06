@@ -55,14 +55,14 @@ export default function LoginForm() {
     <div className="w-full max-w-md mx-auto">
       {/* Header with Logo */}
       <div className="mb-8 flex flex-col items-center text-center">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white mb-1.5 tracking-tight">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-foreground mb-1.5 tracking-tight">
           Welcome back!
         </h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400 font-light">
+        <p className="text-xs text-muted-foreground font-light">
           Don't have an account?{" "}
           <Link
             href="/sign-up"
-            className="text-purple-600 dark:text-purple-400 font-semibold hover:underline"
+            className="text-primary font-semibold hover:underline"
           >
             Sign Up
           </Link>
@@ -76,18 +76,18 @@ export default function LoginForm() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-slate-700 dark:text-slate-350 font-medium block mb-1 text-xs">
+                <FormLabel className="text-foreground font-medium block mb-1 text-xs">
                   Email
                 </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="name@company.com"
                     type="email"
-                    className="h-11 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 pl-4 focus:ring-2 focus:ring-purple-500/20 dark:focus:ring-purple-500/10 focus:border-purple-500 transition-all"
+                    className="h-11 rounded-full border border-border bg-muted/40 text-foreground placeholder:text-muted-foreground pl-4 focus:ring-2 focus:ring-ring/25 focus:border-primary transition-all"
                     {...field}
                   />
                 </FormControl>
-                <FormMessage className="text-red-500 dark:text-red-400 text-xs" />
+                <FormMessage className="text-destructive text-xs" />
               </FormItem>
             )}
           />
@@ -98,12 +98,12 @@ export default function LoginForm() {
             render={({ field }) => (
               <FormItem>
                 <div className="flex justify-between items-center mb-1">
-                  <FormLabel className="text-slate-700 dark:text-slate-350 font-medium text-xs">
+                  <FormLabel className="text-foreground font-medium text-xs">
                     Password
                   </FormLabel>
                   <Link
                     href="/forgot-password"
-                    className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 transition-colors hover:underline"
+                    className="text-xs text-primary hover:text-primary/80 transition-colors hover:underline"
                   >
                     Forgot password?
                   </Link>
@@ -111,11 +111,11 @@ export default function LoginForm() {
                 <FormControl>
                   <PasswordInput
                     placeholder="Enter your password"
-                    className="h-11 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 pl-4 focus:ring-2 focus:ring-purple-500/20 dark:focus:ring-purple-500/10 focus:border-purple-500 transition-all"
+                    className="h-11 rounded-full border border-border bg-muted/40 text-foreground placeholder:text-muted-foreground pl-4 focus:ring-2 focus:ring-ring/25 focus:border-primary transition-all"
                     {...field}
                   />
                 </FormControl>
-                <FormMessage className="text-red-500 dark:text-red-400 text-xs" />
+                <FormMessage className="text-destructive text-xs" />
               </FormItem>
             )}
           />
@@ -125,9 +125,8 @@ export default function LoginForm() {
             size="lg"
             className="
               mt-6 w-full rounded-full h-11
-              bg-purple-600 hover:bg-purple-700
-              dark:bg-purple-500 dark:hover:bg-purple-600
-              text-white font-semibold shadow-md shadow-purple-500/10
+              bg-primary hover:bg-primary/90
+              text-primary-foreground font-semibold shadow-md shadow-primary/20
               transition-all duration-300 cursor-pointer
             "
           >

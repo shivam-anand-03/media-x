@@ -10,6 +10,7 @@ import { logger } from "@/common/helper/logger";
 import { initEventBus } from "@/common/helper/event-bus";
 import { app } from "@/app";
 import { mongoDB as mongoDatabase, vectorDB } from "@/core/database";
+import { seedTemplates } from "@/module/template/template.controller";
 
 class Server {
   private server: HttpServer;
@@ -37,6 +38,10 @@ class Server {
       await this.mongoDB.connect();
 
       await this.vector.connect();
+
+      // Idempotent upsert of the bundled template library, so a fresh database
+      // never opens on an empty Templates page.
+      await seedTemplates();
 
       startAllQueueWorkers();
       logger.info("Queue workers started");

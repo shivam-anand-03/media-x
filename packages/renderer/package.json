@@ -1,0 +1,35 @@
+{
+  "name": "@workspace/renderer",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "studio": "remotion studio src/index.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./preview": "./src/preview.ts",
+    "./stage": "./src/AdvertisementStage.tsx",
+    "./composition": "./src/AdvertisementComposition.tsx",
+    "./root": "./src/Root.tsx",
+    "./layer-style": "./src/layer-style.ts"
+  },
+  "dependencies": {
+    "@workspace/motion": "workspace:*",
+    "lucide-react": "^0.475.0",
+    "remotion": "^4.0.521"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "@workspace/typescript-config": "workspace:*",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "typescript": "^5.9.2"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

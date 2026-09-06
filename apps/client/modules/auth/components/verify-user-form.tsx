@@ -42,16 +42,16 @@ export default function VerifyUserForm() {
 
   return (
     <div className="w-full max-w-md mx-auto px-4 flex flex-col items-center">
-      <div className="w-full overflow-hidden rounded-[2rem] border border-slate-200/60 dark:border-slate-800/80 bg-white/80 dark:bg-slate-950/65 backdrop-blur-xl shadow-2xl shadow-slate-250/30 dark:shadow-black/50 p-6 md:p-8 transition-colors duration-500">
+      <div className="w-full overflow-hidden rounded-[2rem] border border-border/70 bg-card/80 backdrop-blur-xl shadow-[0_1px_2px_color-mix(in_oklab,var(--foreground)_5%,transparent),0_28px_70px_-30px_color-mix(in_oklab,var(--primary)_35%,transparent)] p-6 md:p-8 transition-colors duration-500">
         {/* Header */}
         <div className="text-center mb-6">
-          <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white mb-2 tracking-tight">
+          <h2 className="text-xl md:text-2xl font-extrabold text-foreground mb-2 tracking-tight">
             Please check your email
           </h2>
 
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-light leading-relaxed">
+          <p className="text-xs text-muted-foreground font-light leading-relaxed">
             We've sent a code to{" "}
-            <span className="font-semibold text-slate-750 dark:text-slate-300">
+            <span className="font-semibold text-foreground">
               {email}
             </span>{" "}
             to verify your account
@@ -64,9 +64,9 @@ export default function VerifyUserForm() {
         {/* Resend Timer & Actions */}
         <div className="mt-6 flex flex-col items-center justify-center gap-2 text-xs">
           {secondsLeft > 0 ? (
-            <p className="text-slate-500 dark:text-slate-400 font-light">
+            <p className="text-muted-foreground font-light">
               Didn’t receive the code? Resend in{" "}
-              <span className="font-semibold text-purple-600 dark:text-purple-400">
+              <span className="font-semibold text-primary">
                 0:{secondsLeft.toString().padStart(2, "0")}
               </span>
             </p>
@@ -74,14 +74,14 @@ export default function VerifyUserForm() {
             <div className="flex items-center gap-4">
               <button
                 onClick={handleResend}
-                className="text-purple-600 dark:text-purple-400 font-bold hover:underline"
+                className="text-primary font-bold hover:underline"
               >
                 Resend Code
               </button>
-              <span className="text-slate-200 dark:text-slate-800">|</span>
+              <span className="text-foreground dark:text-foreground">|</span>
               <button
                 onClick={() => router.push("/sign-up")}
-                className="text-slate-500 dark:text-slate-400 font-medium hover:underline"
+                className="text-muted-foreground font-medium hover:underline"
               >
                 Edit Email
               </button>

@@ -6,7 +6,9 @@
       "@workspace/schema/*": ["../../packages/schema/src/*"],
       "@workspace/data-access": ["../../packages/data-access/src/index.ts"],
       "@workspace/data-access/*": ["../../packages/data-access/src/*"],
-      "@workspace/ui/*": ["../../packages/ui/src/*"]
+      "@workspace/ui/*": ["../../packages/ui/src/*"],
+      "@workspace/motion": ["../../packages/motion/src/index.ts"],
+      "@workspace/motion/*": ["../../packages/motion/src/*"]
     },
     "plugins": [
       {

@@ -74,14 +74,14 @@ export function InputOTPForm({ onResend }: { onResend: () => void }) {
                           className="
                             h-12 w-12 text-lg font-bold
                             rounded-md
-                            bg-slate-50/50 dark:bg-slate-900/50
-                            text-slate-900 dark:text-white
-                            border border-slate-200 dark:border-slate-800
+                            bg-muted/40
+                            text-foreground
+                            border border-border
                             shadow-inner
                             transition-all
-                            hover:border-purple-500
-                            focus-visible:border-purple-500
-                            focus-visible:ring-2 focus-visible:ring-purple-500/25
+                            hover:border-primary
+                            focus-visible:border-primary
+                            focus-visible:ring-2 focus-visible:ring-ring/25
                           "
                         />
                       ))}
@@ -90,14 +90,14 @@ export function InputOTPForm({ onResend }: { onResend: () => void }) {
                 </div>
               </FormControl>
 
-              <FormMessage className="text-center text-red-500 text-xs" />
+              <FormMessage className="text-center text-destructive text-xs" />
             </FormItem>
           )}
         />
 
         <Button
           type="submit"
-          className="w-full h-11 bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 text-white rounded-full py-2.5 font-bold text-xs shadow-md shadow-purple-500/10 transition-all duration-200 active:scale-98 cursor-pointer"
+          className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full py-2.5 font-bold text-xs shadow-md shadow-primary/20 transition-all duration-200 active:scale-98 cursor-pointer"
         >
           {isLoading ? <Spinner /> : "Verify"}
         </Button>

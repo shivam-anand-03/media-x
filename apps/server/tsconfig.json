@@ -13,7 +13,9 @@
     "skipLibCheck": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@workspace/schema/*": ["../../packages/schema/src/*"]
+      "@workspace/schema/*": ["../../packages/schema/src/*"],
+      "@workspace/motion": ["../../packages/motion/src/index.ts"],
+      "@workspace/motion/*": ["../../packages/motion/src/*"]
     },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true

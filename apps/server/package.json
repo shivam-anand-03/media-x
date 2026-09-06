@@ -5,7 +5,8 @@
     "dev": "nodemon --exec tsx src/index.ts",
     "clean": "rm -rf dist",
     "build": "rm -rf ./dist && tsc",
-    "start": "node dist/apps/server/src/index.js"
+    "start": "node dist/apps/server/src/index.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "@bull-board/api": "^6.16.2",
@@ -16,6 +17,10 @@
     "@langchain/openai": "^1.4.7",
     "@langchain/pinecone": "^1.0.3",
     "@pinecone-database/pinecone": "^7.2.0",
+    "@remotion/bundler": "^4.0.521",
+    "@remotion/renderer": "^4.0.521",
+    "@workspace/motion": "workspace:*",
+    "@workspace/renderer": "workspace:*",
     "@workspace/schema": "workspace:*",
     "argon2": "^0.43.0",
     "axios": "^1.13.2",
@@ -37,7 +42,9 @@
     "nodemailer": "^7.0.11",
     "openai": "^6.44.0",
     "pdf-parse": "^1.1.4",
+    "remotion": "^4.0.521",
     "request-promise": "^4.2.6",
+    "sharp": "^0.34.2",
     "socket.io": "^4.8.3",
     "ua-parser-js": "^2.0.7",
     "winston": "^3.19.0",
@@ -66,6 +73,7 @@
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.16",
     "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   }
 }

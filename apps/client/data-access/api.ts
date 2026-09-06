@@ -6,6 +6,11 @@ const ApiServices = createApiServices({
   baseUrl: process.env.NEXT_PUBLIC_WEB_SERVER_URL as string,
   tagTypes: [
     "USERS",
+    "PROJECTS",
+    "PROJECT",
+    "ASSETS",
+    "TEMPLATES",
+    "EXPORTS",
   ],
   onUnauthorized: async () => {
     if (typeof window === "undefined") return;

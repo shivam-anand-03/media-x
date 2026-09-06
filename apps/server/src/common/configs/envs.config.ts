@@ -57,4 +57,35 @@ export const envs = {
   OPEN_AI_API_KEY: process.env.OPEN_AI_API_KEY as string,
   PINE_CONE_API_KEY: process.env.PINE_CONE_API_KEY as string,
   PINE_CONE_INDEX: process.env.PINE_CONE_INDEX as string,
+
+  // ---------------------------------------------------------------------
+  // Motion Studio
+  // ---------------------------------------------------------------------
+
+  /**
+   * Which object-storage driver backs asset uploads.
+   * `gcs`   — signed-URL uploads straight to the bucket (production).
+   * `local` — uploads land in ./uploads and are served from /uploads. The
+   *           upload *flow* is identical either way, so nothing downstream
+   *           has to care which one is active.
+   */
+  STORAGE_DRIVER: (process.env.STORAGE_DRIVER || "local") as "gcs" | "local",
+  /** Signs the local driver's upload tickets so /uploads is not world-writable. */
+  UPLOAD_SIGNING_SECRET:
+    (process.env.UPLOAD_SIGNING_SECRET as string) ||
+    (process.env.ACCESS_TOKEN_SECRET as string),
+  /** Minutes an upload ticket stays valid. */
+  UPLOAD_URL_TTL_MINUTES: parseInt(process.env.UPLOAD_URL_TTL_MINUTES || "15", 10),
+
+  /** Set false on API-only instances so they never pick up render jobs. */
+  ENABLE_RENDER_WORKER: process.env.ENABLE_RENDER_WORKER !== "false",
+  /** How many videos one instance renders at a time. */
+  RENDER_CONCURRENCY: parseInt(process.env.RENDER_CONCURRENCY || "1", 10),
+  /** Hard ceiling on a single render, in milliseconds. */
+  RENDER_TIMEOUT_MS: parseInt(process.env.RENDER_TIMEOUT_MS || "600000", 10),
+  /** Absolute path to a Chrome/Chromium binary for Remotion, if not bundled. */
+  REMOTION_BROWSER_EXECUTABLE: process.env.REMOTION_BROWSER_EXECUTABLE || undefined,
+
+  /** Model used by the AI advertisement generator. */
+  AI_MODEL: process.env.AI_MODEL || "gpt-4o-mini",
 };

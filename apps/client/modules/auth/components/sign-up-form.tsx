@@ -83,17 +83,17 @@ export const SignUpForm = () => {
             name="firstName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-slate-700 dark:text-slate-300 font-medium block text-xs mb-1">
+                <FormLabel className="text-foreground font-medium block text-xs mb-1">
                   First Name
                 </FormLabel>
                 <FormControl>
                   <Input
-                    className="h-11 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 pl-4 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                    className="h-11 rounded-full border border-border bg-muted/40 text-foreground placeholder:text-muted-foreground pl-4 focus:ring-2 focus:ring-ring/25 focus:border-primary transition-all"
                     placeholder="John"
                     {...field}
                   />
                 </FormControl>
-                <FormMessage className="text-red-500 dark:text-red-400 text-xs" />
+                <FormMessage className="text-destructive text-xs" />
               </FormItem>
             )}
           />
@@ -102,17 +102,17 @@ export const SignUpForm = () => {
             name="lastName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-slate-700 dark:text-slate-300 font-medium block text-xs mb-1">
+                <FormLabel className="text-foreground font-medium block text-xs mb-1">
                   Last Name
                 </FormLabel>
                 <FormControl>
                   <Input
-                    className="h-11 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 pl-4 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                    className="h-11 rounded-full border border-border bg-muted/40 text-foreground placeholder:text-muted-foreground pl-4 focus:ring-2 focus:ring-ring/25 focus:border-primary transition-all"
                     placeholder="Doe"
                     {...field}
                   />
                 </FormControl>
-                <FormMessage className="text-red-500 dark:text-red-400 text-xs" />
+                <FormMessage className="text-destructive text-xs" />
               </FormItem>
             )}
           />
@@ -122,17 +122,17 @@ export const SignUpForm = () => {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-slate-700 dark:text-slate-300 font-medium block text-xs mb-1">
+              <FormLabel className="text-foreground font-medium block text-xs mb-1">
                 Email
               </FormLabel>
               <FormControl>
                 <Input
-                  className="h-11 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 pl-4 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                  className="h-11 rounded-full border border-border bg-muted/40 text-foreground placeholder:text-muted-foreground pl-4 focus:ring-2 focus:ring-ring/25 focus:border-primary transition-all"
                   placeholder="john@example.com"
                   {...field}
                 />
               </FormControl>
-              <FormMessage className="text-red-500 dark:text-red-400 text-xs" />
+              <FormMessage className="text-destructive text-xs" />
             </FormItem>
           )}
         />
@@ -141,17 +141,17 @@ export const SignUpForm = () => {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-slate-700 dark:text-slate-300 font-medium block text-xs mb-1">
+              <FormLabel className="text-foreground font-medium block text-xs mb-1">
                 Password
               </FormLabel>
               <FormControl>
                 <PasswordInput
                   placeholder="Enter Password (min 8 chars)"
-                  className="h-11 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 pl-4 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                  className="h-11 rounded-full border border-border bg-muted/40 text-foreground placeholder:text-muted-foreground pl-4 focus:ring-2 focus:ring-ring/25 focus:border-primary transition-all"
                   {...field}
                 />
               </FormControl>
-              <FormMessage className="text-red-500 dark:text-red-400 text-xs" />
+              <FormMessage className="text-destructive text-xs" />
             </FormItem>
           )}
         />
@@ -160,14 +160,14 @@ export const SignUpForm = () => {
           name="country"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-slate-700 dark:text-slate-300 font-medium block text-xs mb-1">
+              <FormLabel className="text-foreground font-medium block text-xs mb-1">
                 Choose your country
               </FormLabel>
               <CountrySelect
                 onValueChange={field.onChange}
                 defaultValue={field.value ?? ""}
               />
-              <FormMessage className="text-red-500 dark:text-red-400 text-xs" />
+              <FormMessage className="text-destructive text-xs" />
             </FormItem>
           )}
         />
@@ -181,11 +181,11 @@ export const SignUpForm = () => {
                 <Checkbox
                   checked={field.value}
                   onCheckedChange={field.onChange}
-                  className="border-slate-300 dark:border-slate-700"
+                  className="border-border"
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
-                <FormLabel className="text-slate-600 dark:text-slate-400 text-xs font-normal">
+                <FormLabel className="text-muted-foreground text-xs font-normal">
                   Send me product updates, news, and notifications.
                 </FormLabel>
               </div>
@@ -201,29 +201,29 @@ export const SignUpForm = () => {
                 <Checkbox
                   checked={field.value}
                   onCheckedChange={field.onChange}
-                  className="mt-1 shrink-0 border-slate-300 dark:border-slate-700 bg-slate-50/50"
+                  className="mt-1 shrink-0 border-border bg-muted/40"
                 />
               </FormControl>
 
               <div className="space-y-1 text-xs font-normal leading-normal">
-                <p className="text-slate-600 dark:text-slate-400">
+                <p className="text-muted-foreground">
                   I agree to the{" "}
                   <Link
                     href="/terms"
-                    className="text-purple-600 dark:text-purple-400 hover:underline font-semibold"
+                    className="text-primary hover:underline font-semibold"
                   >
                     Terms of Service
                   </Link>{" "}
                   and{" "}
                   <Link
                     href="/privacy"
-                    className="text-purple-600 dark:text-purple-400 hover:underline font-semibold"
+                    className="text-primary hover:underline font-semibold"
                   >
                     Privacy Policy
                   </Link>
                 </p>
                 {form.formState.errors.agreeToTerms && (
-                  <p className="text-red-500 text-xs mt-1">
+                  <p className="text-destructive text-xs mt-1">
                     {form.formState.errors.agreeToTerms.message}
                   </p>
                 )}
@@ -237,9 +237,8 @@ export const SignUpForm = () => {
           disabled={isLoading}
           className="
             mt-6 w-full rounded-full h-11
-            bg-purple-600 hover:bg-purple-700
-            dark:bg-purple-500 dark:hover:bg-purple-600
-            text-white font-semibold shadow-md shadow-purple-500/10
+            bg-primary hover:bg-primary/90
+            text-primary-foreground font-semibold shadow-md shadow-primary/20
             transition-all duration-300 cursor-pointer
           "
         >
