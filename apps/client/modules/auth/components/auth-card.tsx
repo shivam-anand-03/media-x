@@ -34,7 +34,7 @@ const AuthCard = ({
     <div className={className}>
       {children}
 
-      <aside className="relative m-2 hidden min-h-145 flex-col justify-between overflow-hidden rounded-[1.75rem] bg-[oklch(0.16_0.012_306)] p-9 text-white lg:flex">
+      <aside className="relative m-2 hidden min-h-145 flex-col justify-between overflow-hidden rounded-[1.75rem] bg-[oklch(0.16_0.01_80)] p-9 text-white lg:flex">
         {/* Brand-tinted blooms + blueprint grid. */}
         <div
           aria-hidden

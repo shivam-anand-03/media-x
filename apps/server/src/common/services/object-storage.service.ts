@@ -39,6 +39,25 @@ export interface StorageDriver {
   putBuffer(storagePath: string, buffer: Buffer, mimeType: string): Promise<string>;
   publicUrl(storagePath: string): string;
   delete(storagePath: string): Promise<void>;
+  /**
+   * A time-limited URL for reading one object.
+   *
+   * This is how a finished video leaves the system: the bucket itself can stay
+   * private, and the browser is handed a URL that works for minutes rather than
+   * forever. `filename` sets the download name; `disposition: "attachment"`
+   * makes the browser save rather than stream it in a tab.
+   */
+  signedReadUrl(
+    storagePath: string,
+    options?: { filename?: string; disposition?: "inline" | "attachment"; expiresInMinutes?: number },
+  ): Promise<string>;
+  /** Best-effort: make an object world-readable (see the note in the GCS driver). */
+  makePublic?(storagePath: string): Promise<void>;
+  /**
+   * Checks the driver can actually write, so a misconfiguration surfaces at
+   * boot rather than on a student's first upload.
+   */
+  verifyWritable(): Promise<{ ok: boolean; reason?: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -187,6 +206,24 @@ class LocalStorageDriver implements StorageDriver {
   async delete(storagePath: string) {
     await fs.unlink(resolveLocalPath(storagePath)).catch(() => {});
   }
+
+  /**
+   * The local driver has no signing: files are served straight from
+   * `/uploads`. The download route streams the bytes itself in this mode, so
+   * disposition is handled there rather than in the URL.
+   */
+  async signedReadUrl(storagePath: string) {
+    return this.publicUrl(storagePath);
+  }
+
+  async verifyWritable() {
+    try {
+      await fs.mkdir(UPLOAD_ROOT, { recursive: true });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : String(error) };
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -250,6 +287,83 @@ class GcsStorageDriver implements StorageDriver {
       .file(storagePath)
       .delete()
       .catch(() => {});
+  }
+
+  /**
+   * A v4 signed read URL. This is what lets the bucket stay private: nothing is
+   * world-readable, and each download is a short-lived, per-request grant.
+   *
+   * `responseDisposition` is what actually makes a browser save the file under
+   * a sensible name — a cross-origin `<a download>` is ignored, so the header
+   * has to come from the object store itself.
+   */
+  async signedReadUrl(
+    storagePath: string,
+    options?: { filename?: string; disposition?: "inline" | "attachment"; expiresInMinutes?: number },
+  ) {
+    const bucket = await this.bucket();
+    const disposition = options?.disposition ?? "inline";
+    const filename = options?.filename ?? path.basename(storagePath);
+
+    const [url] = await bucket.file(storagePath).getSignedUrl({
+      version: "v4",
+      action: "read",
+      expires: Date.now() + (options?.expiresInMinutes ?? 15) * 60_000,
+      responseDisposition: `${disposition}; filename="${sanitizeFilename(filename)}"`,
+    });
+    return url;
+  }
+
+  /**
+   * Uploaded media is referenced by URL from inside a saved project document,
+   * so it needs a *stable* address — a signed URL would expire and break the
+   * project. Making the object public gives that, and the storage key is long
+   * and random, so it is unguessable.
+   *
+   * Fails silently when the bucket uses uniform bucket-level access, where
+   * per-object ACLs are rejected; in that case access is governed by bucket IAM
+   * and there is nothing to do here.
+   */
+  async makePublic(storagePath: string) {
+    const bucket = await this.bucket();
+    try {
+      await bucket.file(storagePath).makePublic();
+    } catch (error) {
+      logger.warn("Could not mark object public (uniform bucket-level access?)", {
+        storagePath,
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Asks IAM whether this service account may write to the bucket. Read-only
+   * credentials are the common misconfiguration and would otherwise only show
+   * up as a failed upload much later, with a much less obvious message.
+   */
+  async verifyWritable() {
+    try {
+      const bucket = await this.bucket();
+      const required = ["storage.objects.create", "storage.objects.delete"];
+      const [granted] = await bucket.iam.testPermissions(required);
+      const has = (permission: string) =>
+        Array.isArray(granted)
+          ? granted.includes(permission)
+          : Boolean((granted as Record<string, boolean>)[permission]);
+
+      const missing = required.filter((permission) => !has(permission));
+      if (missing.length === 0) return { ok: true };
+
+      return {
+        ok: false,
+        reason:
+          `the service account is missing ${missing.join(", ")} on gs://${envs.GCP_BUCKET_NAME}. ` +
+          "Grant it with: gcloud storage buckets add-iam-policy-binding " +
+          `gs://${envs.GCP_BUCKET_NAME} --member=serviceAccount:<SA_EMAIL> --role=roles/storage.objectAdmin`,
+      };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : String(error) };
+    }
   }
 }
 

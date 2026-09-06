@@ -102,9 +102,11 @@ export function PreviewModal({
     for (const track of doc.audioTracks) {
       let el = pool.get(track.id);
       if (!el) {
-        el = new Audio(track.src);
+        // See use-playback.ts: no crossOrigin, and src assigned after the
+        // element is configured.
+        el = new Audio();
         el.preload = "auto";
-        el.crossOrigin = "anonymous";
+        el.src = track.src;
         pool.set(track.id, el);
       }
 
@@ -125,7 +127,11 @@ export function PreviewModal({
       if (track.fadeOut > 0 && remaining < track.fadeOut) gain *= remaining / track.fadeOut;
       el.volume = Math.max(0, Math.min(1, gain));
 
-      if (el.paused) void el.play().catch(() => {});
+      if (el.paused) {
+        void el.play().catch((error: unknown) => {
+          console.warn(`[preview audio] could not play "${track.name}":`, error);
+        });
+      }
     }
   }, [open, doc, time, playing]);
 
@@ -171,7 +177,7 @@ export function PreviewModal({
       role="dialog"
       aria-modal="true"
       aria-label="Advertisement preview"
-      className="fixed inset-0 z-50 flex flex-col bg-[oklch(0.09_0.008_306)]/97 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex flex-col bg-[oklch(0.09_0.006_80)]/97 backdrop-blur-sm"
     >
       <header className="flex h-14 shrink-0 items-center justify-between px-4">
         <span className="text-xs font-semibold tracking-wide text-white/70">Preview</span>

@@ -26,11 +26,12 @@ export class App {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
     this.app.use(cookieParser());
-    this.app.use(
-      "/uploads",
-      express.static(path.join(process.cwd(), "uploads")),
-    );
 
+    // CORS must be registered *before* the static mount below. The editor loads
+    // uploaded media with crossOrigin="anonymous" (so the canvas stays untainted
+    // and thumbnails can be captured), which means the browser rejects any
+    // response without an Access-Control-Allow-Origin header — served files
+    // included.
     this.app.use(
       cors({
         origin: [
@@ -40,6 +41,18 @@ export class App {
           "*",
         ],
         credentials: true,
+      }),
+    );
+
+    this.app.use(
+      "/uploads",
+      express.static(path.join(process.cwd(), "uploads"), {
+        // Media is content-addressed by a random key, so it can be cached hard.
+        maxAge: "7d",
+        setHeaders: (res) => {
+          // Lets <video>/<audio> seek instead of re-downloading from the start.
+          res.setHeader("Accept-Ranges", "bytes");
+        },
       }),
     );
 

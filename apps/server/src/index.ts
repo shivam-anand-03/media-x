@@ -11,6 +11,7 @@ import { initEventBus } from "@/common/helper/event-bus";
 import { app } from "@/app";
 import { mongoDB as mongoDatabase, vectorDB } from "@/core/database";
 import { seedTemplates } from "@/module/template/template.controller";
+import { objectStorage } from "@/common/services/object-storage.service";
 
 class Server {
   private server: HttpServer;
@@ -42,6 +43,20 @@ class Server {
       // Idempotent upsert of the bundled template library, so a fresh database
       // never opens on an empty Templates page.
       await seedTemplates();
+
+      // Storage is only exercised on upload and export, both of which happen
+      // long after boot — so check it now, while someone is still looking at
+      // the logs. A failure here is loud but non-fatal: the rest of the app
+      // works fine without uploads.
+      const storage = objectStorage();
+      const writable = await storage.verifyWritable();
+      if (writable.ok) {
+        logger.info(`🗄️  Storage ready (${storage.name})`);
+      } else {
+        logger.error(
+          `🗄️  Storage driver "${storage.name}" cannot write — uploads and exports will fail: ${writable.reason}`,
+        );
+      }
 
       startAllQueueWorkers();
       logger.info("Queue workers started");

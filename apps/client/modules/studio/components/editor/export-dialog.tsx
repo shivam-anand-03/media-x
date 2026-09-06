@@ -99,7 +99,8 @@ export function ExportDialog({
           <CompletedStep job={job} onClose={() => onOpenChange(false)} onNew={reset} />
         ) : canRetry(job.status) ? (
           <FailedStep
-            reason={friendlyExportError(job.error ?? undefined)}
+            reason={friendlyExportError(job.errorCode ?? undefined)}
+            code={job.errorCode ?? undefined}
             cancelled={job.status === "CANCELLED"}
             onRetry={() => void retry()}
             onBack={() => onOpenChange(false)}
@@ -266,12 +267,25 @@ function ProgressStep({
   );
 }
 
+/**
+ * Sends the browser to the authenticated download route.
+ *
+ * Deliberately not the raw `outputUrl`: on GCS the bucket is private, so the
+ * server checks ownership and hands back a short-lived signed URL carrying the
+ * right Content-Disposition. A plain link to storage would either 403 or, if
+ * the bucket were public, skip the ownership check entirely.
+ */
+function openExport(jobId: string, disposition: "inline" | "attachment") {
+  const base = process.env.NEXT_PUBLIC_WEB_SERVER_URL;
+  window.open(`${base}/exports/${jobId}/download?disposition=${disposition}`, "_blank", "noopener");
+}
+
 function CompletedStep({
   job,
   onClose,
   onNew,
 }: {
-  job: { outputUrl?: string | null; fileSize?: number | null; format: ExportFormat };
+  job: { id: string; outputUrl?: string | null; fileSize?: number | null; format: ExportFormat };
   onClose: () => void;
   onNew: () => void;
 }) {
@@ -294,19 +308,12 @@ function CompletedStep({
         <Button
           variant="outline"
           className="flex-1 gap-1.5"
-          disabled={!job.outputUrl}
-          onClick={() => job.outputUrl && window.open(job.outputUrl, "_blank", "noopener")}
+          onClick={() => openExport(job.id, "inline")}
         >
           <ExternalLink className="size-3.5" />
           Preview
         </Button>
-        <Button
-          className="flex-1 gap-1.5"
-          disabled={!job.outputUrl}
-          // `download` on a cross-origin URL is ignored by browsers, so this
-          // opens the file; the user saves from there.
-          onClick={() => job.outputUrl && window.open(job.outputUrl, "_blank", "noopener")}
-        >
+        <Button className="flex-1 gap-1.5" onClick={() => openExport(job.id, "attachment")}>
           <Download className="size-3.5" />
           Download
         </Button>
@@ -326,11 +333,14 @@ function CompletedStep({
 
 function FailedStep({
   reason,
+  code,
   cancelled,
   onRetry,
   onBack,
 }: {
   reason: string;
+  /** Machine-readable cause, shown so a failure can actually be reported. */
+  code?: string;
   cancelled: boolean;
   onRetry: () => void;
   onBack: () => void;
@@ -359,6 +369,15 @@ function FailedStep({
         <p className="mt-2 text-[11px] text-muted-foreground">
           Your project is saved and unchanged.
         </p>
+
+        {/* The code, not a stack trace (§31) — enough to report the problem
+            without putting internals in front of a student. */}
+        {code && !cancelled && (
+          <p className="mt-2 border-t border-border/60 pt-2 text-[10px] text-muted-foreground">
+            Reference code:{" "}
+            <code className="rounded bg-muted px-1 font-mono text-foreground">{code}</code>
+          </p>
+        )}
       </div>
 
       <div className="flex gap-2">

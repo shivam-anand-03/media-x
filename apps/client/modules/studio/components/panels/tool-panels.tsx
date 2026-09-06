@@ -311,6 +311,40 @@ function ShapeGlyph({ kind, fill }: { kind: string; fill: string }) {
   }
 }
 
+
+/**
+ * Drops an audio asset onto the timeline at the playhead.
+ *
+ * Shared by the Media and Audio panels so a sound lands identically whichever
+ * one you added it from.
+ */
+function addAudioAssetToTimeline(asset: AssetRecord): void {
+  const state = useEditorStore.getState();
+  const doc = state.document;
+  if (!doc || asset.status !== "READY") return;
+
+  const startTime = Math.min(state.currentTime, Math.max(0, doc.canvas.duration - 0.5));
+  const available = doc.canvas.duration - startTime;
+  // Use the file's real length when the browser measured it, capped by the
+  // room left in the project.
+  const duration = Math.max(0.5, Math.min(asset.metadata.duration ?? available, available));
+
+  state.addAudioTrack({
+    id: createId("aud"),
+    name: asset.filename.replace(/\.[^.]+$/, ""),
+    src: asset.url,
+    kind: "music",
+    startTime: Math.round(startTime * 100) / 100,
+    duration: Math.round(duration * 100) / 100,
+    trimStart: 0,
+    volume: 0.8,
+    fadeIn: 0,
+    fadeOut: Math.min(1, duration / 4),
+    muted: false,
+    locked: false,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Media / uploads
 // ---------------------------------------------------------------------------
@@ -319,14 +353,23 @@ export function MediaPanel({ kind }: { kind: "media" | "uploads" }) {
   const insert = useInsertLayer();
   const projectId = useEditorStore((s) => s.projectId);
   const { uploads, upload, retry, dismiss } = useAssetUpload(projectId ?? undefined);
+  const preview = useAudioPreview();
   const [dragging, setDragging] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
+
+  // Auditioning and timeline playback must not talk over each other.
+  const timelinePlaying = useEditorStore((s) => s.isPlaying);
+  const stopPreview = preview.stop;
+  React.useEffect(() => {
+    if (timelinePlaying) stopPreview();
+  }, [timelinePlaying, stopPreview]);
 
   const { data, isLoading, isError, refetch } = useListAssetsQuery({ limit: 60 });
   const assets = data?.items ?? [];
 
-  const visibleAssets =
-    kind === "media" ? assets.filter((a) => a.type !== "AUDIO") : assets;
+  // The panel offers "images, video or audio", so it lists all three. Audio is
+  // auditioned in place and dropped onto an audio track rather than the canvas.
+  const visibleAssets = assets;
 
   const onFiles = (files: FileList | null) => {
     if (!files?.length) return;
@@ -335,6 +378,13 @@ export function MediaPanel({ kind }: { kind: "media" | "uploads" }) {
 
   const addToCanvas = (asset: AssetRecord) => {
     if (asset.status !== "READY") return;
+
+    // Audio has no visual representation — it belongs on an audio track.
+    if (asset.type === "AUDIO") {
+      addAudioAssetToTimeline(asset);
+      return;
+    }
+
     insert((ctx) =>
       createMediaLayer(
         ctx,
@@ -462,7 +512,17 @@ export function MediaPanel({ kind }: { kind: "media" | "uploads" }) {
           ) : (
             <div className="grid grid-cols-3 gap-2">
               {visibleAssets.map((asset) => (
-                <AssetTile key={asset.id} asset={asset} onClick={() => addToCanvas(asset)} />
+                <AssetTile
+                  key={asset.id}
+                  asset={asset}
+                  onClick={() => addToCanvas(asset)}
+                  playing={preview.playingId === asset.id}
+                  onTogglePlay={
+                    asset.type === "AUDIO"
+                      ? () => preview.toggle(asset.id, asset.url)
+                      : undefined
+                  }
+                />
               ))}
             </div>
           )}
@@ -472,38 +532,82 @@ export function MediaPanel({ kind }: { kind: "media" | "uploads" }) {
   );
 }
 
-function AssetTile({ asset, onClick }: { asset: AssetRecord; onClick: () => void }) {
+function AssetTile({
+  asset,
+  onClick,
+  playing = false,
+  onTogglePlay,
+}: {
+  asset: AssetRecord;
+  onClick: () => void;
+  playing?: boolean;
+  /** Provided for assets that can be auditioned; audio only. */
+  onTogglePlay?: () => void;
+}) {
   const pending = asset.status === "PENDING";
   const failed = asset.status === "FAILED";
+  const ready = asset.status === "READY";
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={asset.status !== "READY"}
-      title={asset.filename}
-      aria-label={`Add ${asset.filename} to canvas`}
+    <div
       className={cn(
         "group relative aspect-square overflow-hidden rounded-lg border border-border/70 bg-muted/40 transition-all",
-        asset.status === "READY" && "hover:border-primary/40 hover:ring-2 hover:ring-primary/20",
-        asset.status !== "READY" && "cursor-not-allowed opacity-60",
-        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        ready && "hover:border-primary/40",
+        playing && "border-primary/60 ring-2 ring-primary/25",
+        !ready && "opacity-60",
       )}
     >
-      {asset.type === "AUDIO" ? (
-        <span className="grid size-full place-items-center">
-          <Music4 className="size-5 text-muted-foreground" />
-        </span>
-      ) : asset.type === "VIDEO" ? (
-        <video src={asset.url} muted playsInline className="size-full object-cover" />
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={asset.thumbnailUrl ?? asset.url}
-          alt=""
-          loading="lazy"
-          className="size-full object-cover"
-        />
+      {/* The tile body places the asset. */}
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={!ready}
+        title={asset.filename}
+        aria-label={
+          asset.type === "AUDIO"
+            ? `Add ${asset.filename} to the timeline`
+            : `Add ${asset.filename} to the canvas`
+        }
+        className={cn(
+          "size-full",
+          !ready && "cursor-not-allowed",
+          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        )}
+      >
+        {asset.type === "AUDIO" ? (
+          <span className="grid size-full place-items-center">
+            <Music4 className={cn("size-5", playing ? "text-primary" : "text-muted-foreground")} />
+          </span>
+        ) : asset.type === "VIDEO" ? (
+          <video src={asset.url} muted playsInline preload="metadata" className="size-full object-cover" />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={asset.thumbnailUrl ?? asset.url}
+            alt=""
+            loading="lazy"
+            className="size-full object-cover"
+          />
+        )}
+      </button>
+
+      {/* Audition control, layered above the placement target. */}
+      {onTogglePlay && ready && (
+        <button
+          type="button"
+          onClick={onTogglePlay}
+          aria-label={playing ? `Stop ${asset.filename}` : `Play ${asset.filename}`}
+          className={cn(
+            "absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 py-1 text-[9px] font-semibold transition-colors",
+            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+            playing
+              ? "bg-primary text-primary-foreground"
+              : "bg-background/85 text-muted-foreground opacity-0 backdrop-blur-sm group-hover:opacity-100 focus-visible:opacity-100 hover:text-foreground",
+          )}
+        >
+          {playing ? <Pause className="size-2.5" /> : <Play className="size-2.5" />}
+          {playing ? "Stop" : "Play"}
+        </button>
       )}
 
       {pending && (
@@ -512,11 +616,11 @@ function AssetTile({ asset, onClick }: { asset: AssetRecord; onClick: () => void
         </span>
       )}
       {failed && (
-        <span className="absolute inset-x-0 bottom-0 bg-destructive/85 py-0.5 text-[9px] font-semibold text-white">
+        <span className="absolute inset-x-0 bottom-0 bg-destructive/85 py-0.5 text-center text-[9px] font-semibold text-white">
           Failed
         </span>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -551,31 +655,7 @@ export function AudioPanel() {
     }
   }, [uploads, preview]);
 
-  const addTrack = (asset: AssetRecord) => {
-    const state = useEditorStore.getState();
-    const doc = state.document;
-    if (!doc || asset.status !== "READY") return;
-
-    const startTime = Math.min(state.currentTime, Math.max(0, doc.canvas.duration - 0.5));
-    const available = doc.canvas.duration - startTime;
-    // Use the file's real length when we know it, capped by what's left.
-    const duration = Math.max(0.5, Math.min(asset.metadata.duration ?? available, available));
-
-    state.addAudioTrack({
-      id: createId("aud"),
-      name: asset.filename.replace(/\.[^.]+$/, ""),
-      src: asset.url,
-      kind: "music",
-      startTime: Math.round(startTime * 100) / 100,
-      duration: Math.round(duration * 100) / 100,
-      trimStart: 0,
-      volume: 0.8,
-      fadeIn: 0,
-      fadeOut: Math.min(1, duration / 4),
-      muted: false,
-      locked: false,
-    });
-  };
+  const addTrack = addAudioAssetToTimeline;
 
   return (
     <PanelShell title="Audio" description="Add music, voiceover or sound effects.">
@@ -799,7 +879,7 @@ function TemplateCard({
     >
       <span
         className="flex h-20 items-center justify-center"
-        style={{ background: `linear-gradient(135deg, ${accent[0] ?? "#7c3aed"}, ${accent[1] ?? "#05030c"})` }}
+        style={{ background: `linear-gradient(135deg, ${accent[0] ?? "#d4af37"}, ${accent[1] ?? "#1a1408"})` }}
       >
         {applying ? (
           <Loader2 className="size-4 animate-spin text-white" />

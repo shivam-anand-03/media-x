@@ -10,6 +10,7 @@ import {
 } from "@workspace/motion";
 import { useEditorStore } from "../../stores/editor-store";
 import { buildSnapTargets, snapBounds, type SnapTargets } from "../../lib/snapping";
+import { useCanvasThemeColors } from "../../hooks/use-theme-colors";
 import { CanvasLayerNode } from "./canvas-layer-node";
 
 /**
@@ -45,6 +46,9 @@ export function CanvasStage({ document: doc, scale, onSelectBackground }: Canvas
   const showSafeArea = useEditorStore((s) => s.showSafeArea);
   const guides = useEditorStore((s) => s.guides);
   const isPlaying = useEditorStore((s) => s.isPlaying);
+  // Konva cannot read CSS variables, so the chrome colours are resolved from
+  // the theme at runtime instead of hardcoded.
+  const theme = useCanvasThemeColors();
 
   const { canvas } = doc;
 
@@ -240,7 +244,9 @@ export function CanvasStage({ document: doc, scale, onSelectBackground }: Canvas
 
       {/* Overlay — guides, safe area and handles sit above the artwork. */}
       <KonvaLayer>
-        {showSafeArea && <SafeAreaOverlay width={canvas.width} height={canvas.height} />}
+        {showSafeArea && (
+          <SafeAreaOverlay width={canvas.width} height={canvas.height} color={theme.safeArea} />
+        )}
 
         {guides.map((guide, index) => (
           <Line
@@ -250,7 +256,7 @@ export function CanvasStage({ document: doc, scale, onSelectBackground }: Canvas
                 ? [guide.position, 0, guide.position, canvas.height]
                 : [0, guide.position, canvas.width, guide.position]
             }
-            stroke={guide.kind === "center" ? "#f472b6" : "#22d3ee"}
+            stroke={guide.kind === "center" ? theme.guideCenter : theme.guideEdge}
             // Divide by scale so the guide is always a hairline on screen.
             strokeWidth={1 / scale}
             dash={guide.kind === "center" ? undefined : [6 / scale, 4 / scale]}
@@ -267,10 +273,10 @@ export function CanvasStage({ document: doc, scale, onSelectBackground }: Canvas
           padding={2 / scale}
           anchorSize={9 / scale}
           anchorCornerRadius={2 / scale}
-          anchorStroke="#a855f7"
-          anchorFill="#ffffff"
+          anchorStroke={theme.accent}
+          anchorFill={theme.handleFill}
           anchorStrokeWidth={1.5 / scale}
-          borderStroke="#a855f7"
+          borderStroke={theme.accent}
           borderStrokeWidth={1.5 / scale}
           rotateAnchorOffset={26 / scale}
           onTransformStart={handleTransformStart}
@@ -369,7 +375,15 @@ function BackgroundImage({ src, width, height }: { src: string; width: number; h
 }
 
 /** Title/action safe margins, so key content isn't clipped by platform chrome. */
-function SafeAreaOverlay({ width, height }: { width: number; height: number }) {
+function SafeAreaOverlay({
+  width,
+  height,
+  color,
+}: {
+  width: number;
+  height: number;
+  color: string;
+}) {
   const insetX = width * 0.06;
   const insetY = height * 0.08;
   return (
@@ -379,7 +393,7 @@ function SafeAreaOverlay({ width, height }: { width: number; height: number }) {
         y={insetY}
         width={width - insetX * 2}
         height={height - insetY * 2}
-        stroke="#22d3ee"
+        stroke={color}
         strokeWidth={Math.max(1, width / 900)}
         dash={[12, 10]}
         opacity={0.45}

@@ -98,9 +98,22 @@ export function useAudioPlayback(enabled = true) {
         for (const track of tracks) {
           let el = pool.get(track.id);
           if (!el) {
-            el = new Audio(track.src);
+            // No `crossOrigin` here on purpose. Plain playback never needs CORS
+            // (only canvas pixel access does), and requiring it turns any
+            // missing Access-Control-Allow-Origin header into silent silence.
+            // Setting `src` last also matters: assigning it in the constructor
+            // starts the fetch before later properties can affect it.
+            el = new Audio();
             el.preload = "auto";
-            el.crossOrigin = "anonymous";
+            const id = track.id;
+            el.addEventListener("error", () => {
+              // A deleted or unreachable file would otherwise just be silence.
+              useEditorStore.getState().markAudioUnavailable(id, true);
+            });
+            el.addEventListener("canplay", () => {
+              useEditorStore.getState().markAudioUnavailable(id, false);
+            });
+            el.src = track.src;
             pool.set(track.id, el);
           }
 
@@ -121,9 +134,12 @@ export function useAudioPlayback(enabled = true) {
           // user hears while scrubbing matches the encoded audio.
           el.volume = computeGain(track, time);
           if (el.paused) {
-            // A blocked autoplay promise is not an error worth surfacing —
-            // the user simply hasn't interacted with the page yet.
-            void el.play().catch(() => {});
+            void el.play().catch((error: unknown) => {
+              // Autoplay policy or an unreachable file. Log it rather than
+              // failing silently — "no sound and no explanation" is the worst
+              // possible outcome here.
+              console.warn(`[audio] could not play "${track.name}":`, error);
+            });
           }
         }
       },

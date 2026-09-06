@@ -166,8 +166,10 @@ function fallbackGradient(id: string): string {
   for (let i = 0; i < id.length; i++) {
     hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
   }
-  const hue = hash % 360;
-  return `linear-gradient(135deg, oklch(0.45 0.16 ${hue}), oklch(0.2 0.06 ${(hue + 40) % 360}))`;
+  // Constrained to a warm 40°–120° band: each project stays recognisable, but
+  // the grid still reads as one family rather than a rainbow.
+  const hue = 40 + (hash % 80);
+  return `linear-gradient(135deg, oklch(0.6 0.13 ${hue}), oklch(0.24 0.05 ${hue - 10}))`;
 }
 
 /** "12 minutes ago" style stamp. */

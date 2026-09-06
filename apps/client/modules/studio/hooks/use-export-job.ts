@@ -68,7 +68,7 @@ export function useExportJob(projectId: string | null) {
         ...(current ?? ({} as ExportJobResponse)),
         ...payload,
         id: payload.id,
-        error: payload.errorCode ?? current?.error ?? null,
+        errorCode: payload.errorCode ?? current?.errorCode ?? null,
       }));
     };
 

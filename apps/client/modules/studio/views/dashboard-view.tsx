@@ -222,7 +222,7 @@ export function DashboardView() {
                 <span
                   className="flex aspect-[4/5] items-center justify-center"
                   style={{
-                    background: `linear-gradient(135deg, ${template.accent[0] ?? "#7c3aed"}, ${template.accent[1] ?? "#05030c"})`,
+                    background: `linear-gradient(135deg, ${template.accent[0] ?? "#d4af37"}, ${template.accent[1] ?? "#1a1408"})`,
                   }}
                 >
                   <span className="text-[10px] font-bold tracking-[0.16em] text-white/80 uppercase">

@@ -1,3 +1,4 @@
+import path from "path";
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import {
@@ -12,7 +13,8 @@ import { ApiResponse, AsyncHandler } from "@/common/utils/api-utils";
 import { NotFoundError, ValidationError } from "@/common/utils/error-utils";
 import { getAuth } from "@/common/helper/global";
 import { logger } from "@/common/helper/logger";
-import { ExportJobModel, type IExportJobDocument } from "@/core/models";
+import { ExportJobModel, ProjectModel, type IExportJobDocument } from "@/core/models";
+import { objectStorage } from "@/common/services/object-storage.service";
 import { queueManager } from "@/common/queue/queue-manager";
 import { RenderQueue, RENDER_QUEUE_NAME } from "@/common/queue/render.queue";
 import { ProjectService } from "../project/project.service";
@@ -23,6 +25,24 @@ import { ProjectService } from "../project/project.service";
  * The handler's whole job is: validate, snapshot, persist a QUEUED row, enqueue.
  * Rendering itself never touches the request lifecycle.
  */
+/** Content types by export format, for the local streaming path. */
+const CONTENT_TYPES: Record<string, string> = {
+  mp4: "video/mp4",
+  webm: "video/webm",
+  gif: "image/gif",
+};
+
+/** A readable, filesystem-safe download name derived from the project. */
+function buildDownloadName(projectName: string, format: string): string {
+  const base =
+    projectName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "advertisement";
+  return `${base}.${format}`;
+}
+
 class ExportController {
   private get renderQueue(): RenderQueue {
     return queueManager.get<RenderQueue>(RENDER_QUEUE_NAME);
@@ -150,6 +170,54 @@ class ExportController {
 
     const updated = await ExportJobModel.findById(job._id);
     res.status(200).json(new ApiResponse("Export cancelled.", updated?.toJSON()));
+  });
+
+  /**
+   * GET /v1/exports/:id/download
+   *
+   * The only way a rendered video leaves the system. Ownership is checked here,
+   * so the bucket itself never has to be public:
+   *   - GCS   → redirect to a short-lived signed URL carrying a
+   *             Content-Disposition header (a cross-origin `<a download>` is
+   *             ignored by browsers, so the header must come from storage).
+   *   - local → stream the file directly with the same header.
+   *
+   * `?disposition=inline` is used by the dialog's Preview button.
+   */
+  downloadExportHandler = AsyncHandler(async (req: Request, res: Response) => {
+    const { userId } = await getAuth(req);
+    const job = await this.getOwnedJob(req.params.id as string, userId);
+
+    if (job.status !== "COMPLETED" || !job.storagePath) {
+      throw new ValidationError("This export has not finished rendering yet.");
+    }
+
+    const disposition = req.query.disposition === "inline" ? "inline" : "attachment";
+    const project = await ProjectModel.findById(job.projectId).select("name").lean();
+    const filename = buildDownloadName(project?.name ?? "advertisement", job.format);
+
+    const storage = objectStorage();
+
+    if (storage.name === "local") {
+      const absolute = path.join(process.cwd(), "uploads", job.storagePath);
+      // `res.download`/`sendFile` both 404 cleanly if the file vanished.
+      res.setHeader("Content-Disposition", `${disposition}; filename="${filename}"`);
+      res.setHeader("Content-Type", CONTENT_TYPES[job.format] ?? "application/octet-stream");
+      return res.sendFile(absolute, (error) => {
+        if (error && !res.headersSent) {
+          res.status(404).json({ status: "failed", message: "The rendered file is no longer available." });
+        }
+      });
+    }
+
+    const url = await storage.signedReadUrl(job.storagePath, {
+      filename,
+      disposition,
+      expiresInMinutes: 15,
+    });
+
+    logger.info("Export download issued", { exportJobId: job.id, userId, disposition });
+    return res.redirect(302, url);
   });
 
   // -------------------------------------------------------------------------

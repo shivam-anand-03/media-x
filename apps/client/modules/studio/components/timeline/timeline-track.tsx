@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { AudioTrack, Layer } from "@workspace/motion";
-import { Lock, Music4, VolumeX } from "lucide-react";
+import { AlertTriangle, Lock, Music4, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "../../stores/editor-store";
 import { snapValue } from "../../lib/snapping";
@@ -243,6 +243,7 @@ export function TimelineAudioTrack({
   height: number;
 }) {
   const selected = useEditorStore((s) => s.selectedAudioId === track.id);
+  const unavailable = useEditorStore((s) => s.unavailableAudioIds.includes(track.id));
   const snapPoints = useSnapPoints(track.id);
 
   const onCommit = React.useCallback(
@@ -273,7 +274,10 @@ export function TimelineAudioTrack({
           onPointerDown(event, "move");
         }}
         className={cn(
-          "group absolute top-1 bottom-1 flex items-center gap-1.5 overflow-hidden rounded-md border border-chart-2/45 bg-chart-2/22 px-2 transition-colors hover:bg-chart-2/30",
+          "group absolute top-1 bottom-1 flex items-center gap-1.5 overflow-hidden rounded-md border px-2 transition-colors",
+          unavailable
+            ? "border-destructive/60 bg-destructive/20"
+            : "border-chart-2/45 bg-chart-2/22 hover:bg-chart-2/30",
           track.locked ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing",
           selected && "ring-2 ring-primary ring-offset-1 ring-offset-card",
           track.muted && "opacity-45",
@@ -283,13 +287,15 @@ export function TimelineAudioTrack({
           width: Math.max(8, track.duration * pixelsPerSecond),
         }}
       >
-        {track.muted ? (
+        {unavailable ? (
+          <AlertTriangle className="pointer-events-none size-3 shrink-0 text-destructive" />
+        ) : track.muted ? (
           <VolumeX className="pointer-events-none size-3 shrink-0 text-foreground/60" />
         ) : (
           <Music4 className="pointer-events-none size-3 shrink-0 text-foreground/60" />
         )}
         <span className="pointer-events-none truncate text-[10px] font-semibold text-foreground/85">
-          {track.name}
+          {unavailable ? `${track.name} — file unavailable` : track.name}
         </span>
 
         {/* A static waveform silhouette — enough to read the clip as audio

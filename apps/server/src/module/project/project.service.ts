@@ -58,7 +58,7 @@ export class ProjectService {
       return parseProjectDocument({
         version: 1,
         canvas,
-        background: { type: "gradient", from: "#1e1065", to: "#05030c", angle: 165 },
+        background: { type: "gradient", from: "#3d2f0a", to: "#0d0a05", angle: 165 },
         layers: [],
         audioTracks: [],
         scenes: [],

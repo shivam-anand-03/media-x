@@ -106,6 +106,12 @@ export interface EditorState {
   interactingLayerId: string | null;
   editingTextLayerId: string | null;
   clipboard: Layer[];
+  /**
+   * Audio tracks whose file could not be loaded (deleted asset, dead URL).
+   * Transient and not part of history — it describes the world, not the
+   * document. Without it a missing file is simply silence with no explanation.
+   */
+  unavailableAudioIds: string[];
 
   // ---- Persistence --------------------------------------------------------
   saveState: SaveState;
@@ -183,6 +189,7 @@ export interface EditorActions {
   setTimelineZoom(zoom: number): void;
   setGuides(guides: Guide[]): void;
   setEditingTextLayer(id: string | null): void;
+  markAudioUnavailable(id: string, unavailable: boolean): void;
 
   // Persistence
   setSaveState(state: SaveState, error?: string | null): void;
@@ -216,6 +223,7 @@ const initialState: EditorState = {
   interactingLayerId: null,
   editingTextLayerId: null,
   clipboard: [],
+  unavailableAudioIds: [],
   saveState: "idle",
   lastSavedAt: null,
   saveError: null,
@@ -527,6 +535,17 @@ export const useEditorStore = create<EditorStore>()(
       setTimelineZoom: (zoom) => set({ timelineZoom: Math.max(0.25, Math.min(zoom, 8)) }),
       setGuides: (guides) => set({ guides }),
       setEditingTextLayer: (id) => set({ editingTextLayerId: id }),
+
+      markAudioUnavailable: (id, unavailable) =>
+        set((state) => {
+          const has = state.unavailableAudioIds.includes(id);
+          if (has === unavailable) return state;
+          return {
+            unavailableAudioIds: unavailable
+              ? [...state.unavailableAudioIds, id]
+              : state.unavailableAudioIds.filter((x) => x !== id),
+          };
+        }),
 
       // -------------------------------------------------------- persistence
       setSaveState: (state, error) => set({ saveState: state, saveError: error ?? null }),

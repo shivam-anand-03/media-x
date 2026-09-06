@@ -55,6 +55,12 @@ export class AssetQueue extends BaseQueueService<AssetJobPayload> {
         if (thumb) asset.thumbnailUrl = thumb;
       }
 
+      // A saved project references media by URL, so that URL has to stay valid
+      // indefinitely — a signed URL would expire and silently break the
+      // project. Publishing the object gives a stable address; the storage key
+      // is long and random, so it is not guessable. No-op on the local driver.
+      await storage.makePublic?.(asset.storagePath);
+
       asset.status = AssetStatus.READY;
       asset.error = null;
       await asset.save();

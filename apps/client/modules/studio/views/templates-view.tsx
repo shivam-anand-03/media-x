@@ -198,7 +198,7 @@ function TemplateCard({
       <div
         className="relative flex aspect-[4/5] items-center justify-center overflow-hidden"
         style={{
-          background: `linear-gradient(135deg, ${template.accent[0] ?? "#7c3aed"}, ${template.accent[1] ?? "#05030c"})`,
+          background: `linear-gradient(135deg, ${template.accent[0] ?? "#d4af37"}, ${template.accent[1] ?? "#1a1408"})`,
         }}
       >
         {/* A scene strip stands in for a bitmap thumbnail and communicates the

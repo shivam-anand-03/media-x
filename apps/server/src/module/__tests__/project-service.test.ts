@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { Types } from "mongoose";
 import {
   canTransition,
+  friendlyExportError,
   overallProgress,
   parseProjectDocument,
   safeParseProjectDocument,
@@ -9,6 +11,7 @@ import {
   type CanvasConfig,
   type ProjectDocument,
 } from "@workspace/motion";
+import { ExportJobModel } from "@/core/models";
 import { ProjectService } from "../project/project.service";
 import { compilePlanToDocument } from "../ai/plan-compiler";
 import { HeuristicAdPlanner } from "../ai/ad-planner";
@@ -131,6 +134,53 @@ describe("export job lifecycle", () => {
       expect(size.width % 2).toBe(0);
       expect(size.height % 2).toBe(0);
     }
+  });
+});
+
+describe("export job serialisation", () => {
+  it("exposes errorCode to the client and hides internals", () => {
+    // Regression guard: the client reads `errorCode` to choose its failure
+    // copy. When the field was named `error` in the shared view type, every
+    // failure silently collapsed into the generic fallback message.
+    const job = new ExportJobModel({
+      userId: new Types.ObjectId(),
+      projectId: new Types.ObjectId(),
+      status: "FAILED",
+      width: 1080,
+      height: 1920,
+      fps: 30,
+      durationSeconds: 10,
+      projectSnapshot: { secret: "large blob" },
+      errorCode: "TIMEOUT",
+      errorDetail: "Error: internal stack trace\n  at somewhere",
+    });
+
+    const json = job.toJSON() as unknown as Record<string, unknown>;
+
+    expect(json.errorCode).toBe("TIMEOUT");
+    // Internals must never reach the browser.
+    expect(json.errorDetail).toBeUndefined();
+    expect(json.projectSnapshot).toBeUndefined();
+    expect(json.__v).toBeUndefined();
+  });
+
+  it("gives every render failure code its own actionable message", () => {
+    const codes = [
+      "TIMEOUT",
+      "INVALID_PROJECT",
+      "ASSET_UNAVAILABLE",
+      "STORAGE_FAILED",
+      "WORKER_UNAVAILABLE",
+      "CANCELLED",
+    ];
+    const generic = friendlyExportError("SOMETHING_UNMAPPED");
+    for (const code of codes) {
+      expect(friendlyExportError(code), `${code} should not fall back to the generic message`).not.toBe(
+        generic,
+      );
+    }
+    // An unknown code still produces reassuring copy rather than nothing.
+    expect(generic).toContain("safe");
   });
 });
 

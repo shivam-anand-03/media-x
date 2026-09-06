@@ -84,8 +84,13 @@ export interface ExportJobView {
   durationSeconds: number;
   outputUrl?: string | null;
   fileSize?: number | null;
-  /** User-facing failure reason. Stack traces stay server-side (§31). */
-  error?: string | null;
+  /**
+   * Machine-readable failure cause (see `friendlyExportError`). Named to match
+   * the field the API actually serialises — a mismatch here silently collapsed
+   * every failure into the generic fallback message. Stack traces stay
+   * server-side (§31).
+   */
+  errorCode?: string | null;
   attempt: number;
   createdAt: string;
   completedAt?: string | null;

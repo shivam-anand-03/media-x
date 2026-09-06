@@ -56,158 +56,172 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Champagne → gold → deep bronze. */
   --auth-gradient: linear-gradient(
     180deg,
-    #d8b4fe 0%,
-    #a855f7 45%,
-    #3b0764 100%
+    #f4e4bc 0%,
+    #d4af37 45%,
+    #3d2f0a 100%
   );
   --main-gradient: linear-gradient(
     180deg,
-    #d8b4fe 0%,
-    #a855f7 45%,
-    #3b0764 100%
+    #f4e4bc 0%,
+    #d4af37 45%,
+    #3d2f0a 100%
   );
 }
 
 :root {
-  --background: oklch(0.985 0.008 310);
-  --foreground: oklch(0 0 0);
+  /* ------------------------------------------------------------------
+     Golden theme — light
+     A warm paper ground with antique gold as the action colour. Gold is a
+     light hue, so `--primary-foreground` is dark ink rather than white:
+     white on gold fails contrast badly, dark on gold is the classic pairing.
+     ------------------------------------------------------------------ */
+
+  --background: oklch(0.985 0.006 90);
+  --foreground: oklch(0.16 0.012 80);
 
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.03 310);
+  --card-foreground: oklch(0.18 0.012 80);
 
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.03 310);
+  --popover-foreground: oklch(0.18 0.012 80);
 
-  /* Main Brand — unified with the navbar brand color (#5b0e70) */
-  --primary: #5b0e70;
-  --primary-foreground: oklch(0.98 0.01 320);
+  /* Deep antique gold. Bright gold on a light ground is unreadable as text
+     (2.2:1), and `text-primary` is used for links, active nav and labels — so
+     light mode uses a deeper gold that clears AA both as text on white (4.7:1)
+     and as a button carrying a white label. The bright decorative gold lives on
+     in `--brand-bright` for gradients and glows. */
+  --primary: oklch(0.56 0.115 80);
+  --primary-foreground: oklch(0.99 0.005 90);
 
-  /* Soft Purple Surface */
-  --secondary: oklch(0.91 0.04 305); /* #DCD4FD */
-  --secondary-foreground: oklch(0.35 0.06 305);
+  /* Champagne surface */
+  --secondary: oklch(0.93 0.035 88);
+  --secondary-foreground: oklch(0.32 0.05 82);
 
-  /* Subtle Surfaces */
-  --muted: oklch(0.96 0.02 310);
-  --muted-foreground: oklch(0.48 0.05 310);
+  /* Subtle surfaces */
+  --muted: oklch(0.96 0.014 88);
+  --muted-foreground: oklch(0.47 0.03 84);
 
-  /* Hover/Accent */
-  --accent: oklch(0.89 0.06 315); /* lavender tint */
-  --accent-foreground: oklch(0.25 0.05 315);
+  /* Hover/accent */
+  --accent: oklch(0.91 0.06 88);
+  --accent-foreground: oklch(0.26 0.05 82);
 
-  --destructive: oklch(0.63 0.22 25);
+  --destructive: oklch(0.58 0.21 27);
 
-  /* Semantic status (toasts, alerts, badges) */
-  --success: oklch(0.62 0.15 150);
-  --warning: oklch(0.72 0.16 75);
-  --info: oklch(0.58 0.16 250);
+  /* Semantic status. Warning is pushed toward orange so it stays
+     distinguishable from the gold brand colour. */
+  --success: oklch(0.58 0.14 150);
+  --warning: oklch(0.68 0.16 55);
+  --info: oklch(0.55 0.13 240);
 
-  --border: oklch(0.9 0.02 300);
-  --input: oklch(0.92 0.015 300);
-  --ring: #5b0e70;
+  --border: oklch(0.9 0.015 86);
+  --input: oklch(0.92 0.012 86);
+  --ring: oklch(0.56 0.115 80);
 
-  /* Charts */
-  --chart-1: oklch(0.52 0.19 315); /* #7936A2 */
-  --chart-2: oklch(0.46 0.27 320); /* #9009D3 */
-  --chart-3: oklch(0.4 0.17 310); /* #7C287D */
-  --chart-4: oklch(0.32 0.18 305); /* #4D046E */
-  --chart-5: oklch(0.62 0.12 300); /* #8B62A8 */
+  /* Charts — gold through amber to bronze, spread on lightness so they stay
+     separable in a legend rather than reading as one colour. */
+  --chart-1: oklch(0.74 0.14 90);
+  --chart-2: oklch(0.63 0.13 62);
+  --chart-3: oklch(0.82 0.11 100);
+  --chart-4: oklch(0.52 0.1 74);
+  --chart-5: oklch(0.69 0.07 96);
 
   --radius: 1rem;
 
   /* Sidebar */
-  --sidebar: oklch(0.98 0.01 310);
-  --sidebar-foreground: oklch(0.22 0.03 310);
+  --sidebar: oklch(0.975 0.01 90);
+  --sidebar-foreground: oklch(0.2 0.012 82);
 
-  --sidebar-primary: oklch(0.52 0.19 315);
-  --sidebar-primary-foreground: oklch(0.98 0.01 320);
+  --sidebar-primary: oklch(0.56 0.115 80);
+  --sidebar-primary-foreground: oklch(0.99 0.005 90);
 
-  --sidebar-accent: oklch(0.92 0.03 305);
-  --sidebar-accent-foreground: oklch(0.3 0.05 310);
+  --sidebar-accent: oklch(0.93 0.04 88);
+  --sidebar-accent-foreground: oklch(0.28 0.05 82);
 
-  --sidebar-border: oklch(0.9 0.02 300);
-  --sidebar-ring: oklch(0.58 0.22 315);
+  --sidebar-border: oklch(0.9 0.015 86);
+  --sidebar-ring: oklch(0.56 0.115 80);
 
-  /* New semantic tokens */
-  --brand-bright: oklch(51.17% 0.257 308.28);
-  --brand-dark: oklch(40% 0.2 300);
-  --brand-soft: oklch(70% 0.1 305);
-  --brand-surface: oklch(90% 0.05 310);
-  --brand-pink: oklch(80% 0.2 315);
+  /* Brand tokens. `--brand-pink` keeps its name (it is referenced across the
+     app) but now carries rose gold, so the family stays coherent. */
+  --brand-bright: oklch(0.8 0.15 92);
+  --brand-dark: oklch(0.52 0.1 78);
+  --brand-soft: oklch(0.86 0.08 88);
+  --brand-surface: oklch(0.95 0.03 88);
+  --brand-pink: oklch(0.76 0.1 52);
 
   /* Nav follows the app surface so the brand wordmark stays legible. */
   --nav-bg: var(--card);
 }
 
 .dark {
-  /* One cohesive dark family: every neutral shares the brand hue (~306) at low
-     chroma, so surfaces read as related instead of mixing neutral-grey with
-     purple. Elevation is a single lightness ladder:
+  /* ------------------------------------------------------------------
+     Golden theme — dark
+     Where gold belongs. Every neutral carries a warm hue (~80) at low chroma
+     so surfaces read as one family instead of grey-plus-gold. Elevation is a
+     single lightness ladder:
        background < sidebar < card = popover < muted < secondary < input < accent
-     Cards and popovers share a value so a dropdown over a card never shifts
-     colour. Foreground/ring/accents are brand-tinted, not grey. */
+     ------------------------------------------------------------------ */
 
-  --background: oklch(0.16 0.012 306);
-  --foreground: oklch(0.97 0.006 306);
+  --background: oklch(0.15 0.008 80);
+  --foreground: oklch(0.96 0.008 88);
 
-  /* Elevated surfaces — cards and popovers match exactly */
-  --card: oklch(0.21 0.022 306);
-  --card-foreground: oklch(0.97 0.006 306);
+  /* Elevated surfaces — cards and popovers match exactly, so a dropdown over
+     a card never shifts colour. */
+  --card: oklch(0.2 0.012 80);
+  --card-foreground: oklch(0.96 0.008 88);
 
-  --popover: oklch(0.21 0.022 306);
-  --popover-foreground: oklch(0.97 0.006 306);
+  --popover: oklch(0.2 0.012 80);
+  --popover-foreground: oklch(0.96 0.008 88);
 
-  /* Brand action — vivid purple, white text stays legible */
-  --primary: oklch(0.6 0.21 305);
-  --primary-foreground: oklch(0.99 0.01 320);
+  /* Bright gold action. Dark ink on top, never white. */
+  --primary: oklch(0.8 0.14 88);
+  --primary-foreground: oklch(0.17 0.02 80);
 
-  --secondary: oklch(0.27 0.032 306);
-  --secondary-foreground: oklch(0.97 0.006 306);
+  --secondary: oklch(0.26 0.02 82);
+  --secondary-foreground: oklch(0.96 0.008 88);
 
-  --muted: oklch(0.245 0.022 306);
-  --muted-foreground: oklch(0.73 0.03 306);
+  --muted: oklch(0.24 0.014 82);
+  --muted-foreground: oklch(0.72 0.025 86);
 
-  /* Hover/accent — a little more chroma so hovers read as brand-tinted */
-  --accent: oklch(0.3 0.05 306);
-  --accent-foreground: oklch(0.98 0.006 306);
+  --accent: oklch(0.3 0.04 85);
+  --accent-foreground: oklch(0.97 0.008 88);
 
-  --destructive: oklch(0.7 0.19 22);
+  --destructive: oklch(0.68 0.19 25);
 
-  /* Semantic status — bright enough to pop on dark surfaces */
-  --success: oklch(0.72 0.17 152);
-  --warning: oklch(0.8 0.15 80);
-  --info: oklch(0.7 0.15 250);
+  --success: oklch(0.72 0.16 152);
+  --warning: oklch(0.76 0.15 62);
+  --info: oklch(0.7 0.14 240);
 
   --border: oklch(1 0 0 / 12%);
-  --input: oklch(0.29 0.028 306);
-  --ring: oklch(0.6 0.21 305);
+  --input: oklch(0.28 0.02 82);
+  --ring: oklch(0.8 0.14 88);
 
-  /* Charts — vivid, with enough lightness + hue spread to stay distinguishable
-     in donuts and legends while keeping the violet→magenta brand feel. */
-  --chart-1: oklch(0.7 0.19 305);
-  --chart-2: oklch(0.67 0.21 330);
-  --chart-3: oklch(0.74 0.15 278);
-  --chart-4: oklch(0.6 0.22 318);
-  --chart-5: oklch(0.82 0.1 300);
+  /* Charts — bright enough to carry on a dark ground, spread across hue and
+     lightness so a donut stays readable. */
+  --chart-1: oklch(0.82 0.14 90);
+  --chart-2: oklch(0.72 0.14 58);
+  --chart-3: oklch(0.88 0.11 102);
+  --chart-4: oklch(0.62 0.12 72);
+  --chart-5: oklch(0.78 0.07 96);
 
-  /* Sidebar — a hair darker than cards; active item is brand-tinted */
-  --sidebar: oklch(0.185 0.016 306);
-  --sidebar-foreground: oklch(0.97 0.006 306);
-  --sidebar-primary: oklch(0.6 0.21 305);
-  --sidebar-primary-foreground: oklch(0.99 0.01 320);
-  --sidebar-accent: oklch(0.29 0.05 306);
-  --sidebar-accent-foreground: oklch(0.98 0.006 306);
+  /* Sidebar — a hair darker than cards; active item is gold-tinted. */
+  --sidebar: oklch(0.175 0.01 80);
+  --sidebar-foreground: oklch(0.96 0.008 88);
+  --sidebar-primary: oklch(0.8 0.14 88);
+  --sidebar-primary-foreground: oklch(0.17 0.02 80);
+  --sidebar-accent: oklch(0.29 0.04 85);
+  --sidebar-accent-foreground: oklch(0.97 0.008 88);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.6 0.21 305);
+  --sidebar-ring: oklch(0.8 0.14 88);
 
-  /* Brand tokens — dark-mode equivalents so brand-* surfaces adapt
-     instead of staying light (e.g. the dashboard header card). */
-  --brand-bright: oklch(0.66 0.24 306);
-  --brand-dark: oklch(0.5 0.2 305);
-  --brand-soft: oklch(0.46 0.12 305);
-  --brand-surface: oklch(0.22 0.035 306); /* deep purple card surface */
-  --brand-pink: oklch(0.72 0.2 330);
+  /* Brand tokens — dark-mode equivalents so brand-* surfaces adapt. */
+  --brand-bright: oklch(0.84 0.15 92);
+  --brand-dark: oklch(0.6 0.12 80);
+  --brand-soft: oklch(0.5 0.09 84);
+  --brand-surface: oklch(0.22 0.024 82);
+  --brand-pink: oklch(0.78 0.11 50);
 
   --nav-bg: var(--brand-surface);
 }

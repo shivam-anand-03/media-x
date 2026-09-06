@@ -29,7 +29,8 @@ export function useAudioPreview(): AudioPreview {
     if (!elementRef.current) {
       const audio = new Audio();
       audio.preload = "none";
-      audio.crossOrigin = "anonymous";
+      // No crossOrigin: auditioning only plays the file, and demanding CORS
+      // would make any un-headered host fail silently.
       elementRef.current = audio;
     }
     return elementRef.current;
@@ -60,9 +61,10 @@ export function useAudioPreview(): AudioPreview {
       setProgress(0);
       setPlayingId(id);
 
-      void audio.play().catch(() => {
+      void audio.play().catch((error: unknown) => {
         // Autoplay policy or an unreachable file: drop back to a stopped state
         // rather than leaving a button stuck showing "playing".
+        console.warn("[audio preview] playback failed:", error);
         setPlayingId(null);
       });
     },
