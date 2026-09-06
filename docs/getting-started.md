@@ -1,0 +1,179 @@
+# Getting started
+
+[← Back to README](../README.md)
+
+---
+
+## Prerequisites
+
+| | Version | Notes |
+|---|---|---|
+| Node.js | ≥ 20 | 24.x is what this was developed against |
+| pnpm | 10.x | `packageManager` pins the exact version |
+| MongoDB | 7.x | Or MongoDB Atlas |
+| Redis | 7.x | Required — BullMQ and the rate limiter both use it |
+
+**Not required to develop:** FFmpeg and Chrome. Remotion bundles its own FFmpeg and
+downloads a headless Chrome on the first render (~150 MB, once).
+
+---
+
+## Install
+
+```bash
+pnpm install
+```
+
+## Start the infrastructure
+
+```bash
+pnpm dev:infra        # docker compose up -d
+```
+
+That brings up MongoDB on `27017` and Redis on `6379` from
+[`docker-compose.yml`](../docker-compose.yml). If you already run them locally, or
+use Atlas, skip this and point the env vars wherever you like.
+
+> The API will not start without Redis — `cache.ping()` runs during boot. That is
+> pre-existing behaviour of this codebase, not specific to the studio.
+
+## Configure
+
+```bash
+cp .env.example apps/server/.env
+cp apps/client/.env.example apps/client/.env
+```
+
+### Server — the ones that matter
+
+```bash
+PORT=5030
+MONGODB_URI="mongodb://127.0.0.1:27017/motion_studio"
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+
+CLIENT_WEB_APP_URL="http://localhost:3000"
+SERVER_APP_URL="http://localhost:5030"      # used to build upload + media URLs
+
+ACCESS_TOKEN_SECRET="…"                      # any long random string
+REFRESH_TOKEN_SECRET="…"
+
+STORAGE_DRIVER="local"                       # local | gcs
+```
+
+### Client
+
+```bash
+NEXT_PUBLIC_WEB_SERVER_URL="http://localhost:5030/v1"
+NEXT_PUBLIC_WEB_SOCKET_SERVER="http://localhost:5030"
+```
+
+Note the `/v1` on the API URL and its absence on the socket URL — they are different
+by design.
+
+### Optional
+
+| Variable | Default | Effect |
+|---|---|---|
+| `STORAGE_DRIVER` | `local` | `gcs` uploads to a bucket instead of disk — see [storage](storage.md) |
+| `OPEN_AI_API_KEY` | — | Enables the LLM planner; without it the offline planner is used |
+| `RENDER_CONCURRENCY` | `1` | Simultaneous renders per instance |
+| `RENDER_TIMEOUT_MS` | `600000` | Hard ceiling on a single render |
+| `ENABLE_RENDER_WORKER` | `true` | Set `false` on API-only instances |
+| `REMOTION_BROWSER_EXECUTABLE` | — | Path to an existing Chrome, to skip the download |
+
+> **Watch the underscore.** The code reads `OPEN_AI_API_KEY`, not `OPENAI_API_KEY`.
+> With the wrong name the AI generator silently falls back to the offline planner.
+
+## Run
+
+```bash
+pnpm dev
+```
+
+| | |
+|---|---|
+| Client | <http://localhost:3000> |
+| API | <http://localhost:5030> |
+| Health | <http://localhost:5030/health> |
+
+A healthy boot logs:
+
+```
+📦 Queue registered: email-queue
+📦 Queue registered: video-render
+📦 Queue registered: asset-processing
+Redis connected
+MongoDB connected successfully
+🎬 Templates seeded {"upserted":10,…}
+🗄️  Storage ready (local)
+Server started {"port":5030,…}
+```
+
+Templates are seeded on every boot as an idempotent upsert, so a fresh database
+never opens on an empty Templates page.
+
+---
+
+## First run through the app
+
+1. **Sign up** at `/sign-up`.
+   Verification sends an OTP by email. Without SMTP configured, mark the user
+   verified directly:
+   ```js
+   db.users.updateOne(
+     { email: "you@example.com" },
+     { $set: { isVerified: true, isEmailVerified: true } }
+   )
+   ```
+2. **Dashboard** → *Create advertisement* → pick a format → *Create project*.
+3. **Editor** — add text from the left rail, drag it on the canvas, drag its clip on
+   the timeline, give it an entrance in the inspector.
+4. **Preview** (`Ctrl/⌘ P`) — plays through the shared renderer.
+5. **Export** (`Ctrl/⌘ E`) — queues a render; progress streams over the socket.
+
+---
+
+## Commands
+
+```bash
+pnpm dev              # everything
+pnpm dev:infra        # mongo + redis
+pnpm build            # client + server
+pnpm test             # all suites
+pnpm type-check       # every package
+pnpm lint
+```
+
+Scoped to one package:
+
+```bash
+pnpm --filter client build
+pnpm --filter server dev
+cd packages/motion && pnpm exec vitest run
+```
+
+---
+
+## Troubleshooting
+
+**`EADDRINUSE :5030`** — something already holds the port.
+`PORT=5055 SERVER_APP_URL=http://localhost:5055 pnpm --filter server dev`
+
+**Redis connection refused at boot** — the API requires Redis. `pnpm dev:infra`, or
+point `REDIS_HOST`/`REDIS_PORT` at your instance.
+
+**Media shows "unavailable" in the editor** — the file's URL is not loading. With
+`STORAGE_DRIVER=local`, check the file exists under `apps/server/uploads/`. Deleting
+that directory orphans asset records: the library still lists them, but they 404.
+
+**First export takes minutes** — Remotion is downloading Chrome. Watch the server log
+for `Downloading Chrome Headless Shell`. Subsequent renders reuse it.
+
+**Export fails immediately** — the dialog shows a reference code. See
+[rendering → failure codes](rendering.md#failure-codes).
+
+**`🗄️ Storage driver "gcs" cannot write`** — the boot preflight caught a
+misconfiguration and printed the exact IAM command to fix it. See [storage](storage.md).
+
+More: [docs/troubleshooting.md](troubleshooting.md)
