@@ -6,6 +6,9 @@ import {
   Loader2,
   Minus,
   Music4,
+  Pause,
+  Play,
+  Plus,
   Search,
   Sparkles,
   Square,
@@ -39,6 +42,7 @@ import { getIconComponent } from "@workspace/renderer/preview";
 import { useEditorStore } from "../../stores/editor-store";
 import { useListTemplatesQuery, useListAssetsQuery, type AssetRecord } from "../../api/studio-api";
 import { useAssetUpload } from "../../hooks/use-asset-upload";
+import { useAudioPreview } from "../../hooks/use-audio-preview";
 
 /**
  * The contextual tool panels behind the left rail (§11–§14).
@@ -523,10 +527,29 @@ function AssetTile({ asset, onClick }: { asset: AssetRecord; onClick: () => void
 export function AudioPanel() {
   const projectId = useEditorStore((s) => s.projectId);
   const { uploads, upload } = useAssetUpload(projectId ?? undefined);
+  const preview = useAudioPreview();
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const { data, isLoading } = useListAssetsQuery({ kind: "AUDIO", limit: 60 });
   const tracks = data?.items ?? [];
+
+  // Auditioning and timeline playback would otherwise talk over each other.
+  const timelinePlaying = useEditorStore((s) => s.isPlaying);
+  const stopPreview = preview.stop;
+  React.useEffect(() => {
+    if (timelinePlaying) stopPreview();
+  }, [timelinePlaying, stopPreview]);
+
+  // Audition a file the moment its upload lands, so you hear what you just
+  // added instead of having to put it on the timeline to find out.
+  const auditioned = React.useRef<Set<string>>(new Set());
+  React.useEffect(() => {
+    for (const item of uploads) {
+      if (item.status !== "done" || !item.asset || auditioned.current.has(item.id)) continue;
+      auditioned.current.add(item.id);
+      if (item.asset.type === "AUDIO") preview.toggle(item.asset.id, item.asset.url);
+    }
+  }, [uploads, preview]);
 
   const addTrack = (asset: AssetRecord) => {
     const state = useEditorStore.getState();
@@ -602,37 +625,83 @@ export function AudioPanel() {
             />
           ) : (
             <ul className="space-y-1.5">
-              {tracks.map((asset) => (
-                <li key={asset.id}>
-                  <button
-                    type="button"
-                    disabled={asset.status !== "READY"}
-                    onClick={() => addTrack(asset)}
+              {tracks.map((asset) => {
+                const playing = preview.playingId === asset.id;
+                const ready = asset.status === "READY";
+                return (
+                  <li
+                    key={asset.id}
                     className={cn(
-                      "flex w-full items-center gap-2.5 rounded-lg border border-border/70 bg-muted/30 px-3 py-2.5 text-left transition-all",
-                      asset.status === "READY"
-                        ? "hover:border-primary/40 hover:bg-muted/60"
-                        : "cursor-not-allowed opacity-60",
-                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                      "group relative flex items-center gap-2 overflow-hidden rounded-lg border bg-muted/30 pr-1.5 pl-2 transition-colors",
+                      playing ? "border-primary/50 bg-primary/8" : "border-border/70 hover:bg-muted/60",
+                      !ready && "opacity-60",
                     )}
                   >
-                    <Music4 className="size-3.5 shrink-0 text-primary" />
-                    <span className="min-w-0 flex-1">
+                    {/* Preview — hear it before committing it to the timeline. */}
+                    <button
+                      type="button"
+                      disabled={!ready}
+                      onClick={() => preview.toggle(asset.id, asset.url)}
+                      aria-label={playing ? `Stop ${asset.filename}` : `Play ${asset.filename}`}
+                      className={cn(
+                        "grid size-7 shrink-0 place-items-center rounded-full transition-colors",
+                        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                        playing
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:text-foreground",
+                        !ready && "cursor-not-allowed",
+                      )}
+                    >
+                      {asset.status === "PENDING" ? (
+                        <Loader2 className="size-3 animate-spin" />
+                      ) : playing ? (
+                        <Pause className="size-3" />
+                      ) : (
+                        <Play className="size-3 translate-x-px" />
+                      )}
+                    </button>
+
+                    <span className="min-w-0 flex-1 py-2.5">
                       <span className="block truncate text-[11px] font-medium text-foreground">
                         {asset.filename}
                       </span>
-                      {asset.metadata.duration && (
-                        <span className="block text-[10px] text-muted-foreground tabular-nums">
-                          {formatDuration(asset.metadata.duration)}
-                        </span>
-                      )}
+                      <span className="block text-[10px] text-muted-foreground tabular-nums">
+                        {playing
+                          ? "Playing…"
+                          : asset.metadata.duration
+                            ? formatDuration(asset.metadata.duration)
+                            : "Audio"}
+                      </span>
                     </span>
-                    {asset.status === "PENDING" && (
-                      <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground" />
+
+                    {/* Add to timeline. */}
+                    <button
+                      type="button"
+                      disabled={!ready}
+                      onClick={() => addTrack(asset)}
+                      aria-label={`Add ${asset.filename} to the timeline`}
+                      title="Add to timeline"
+                      className={cn(
+                        "grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors",
+                        "hover:bg-primary/12 hover:text-primary",
+                        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                        !ready && "cursor-not-allowed",
+                      )}
+                    >
+                      <Plus className="size-3.5" />
+                    </button>
+
+                    {/* Progress hairline while auditioning. */}
+                    {playing && (
+                      <span
+                        aria-hidden
+                        className="absolute bottom-0 left-0 h-0.5 bg-primary transition-[width] duration-200"
+                        style={{ width: `${preview.progress * 100}%` }}
+                      />
                     )}
-                  </button>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

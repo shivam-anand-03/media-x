@@ -331,10 +331,22 @@ export function estimateTextWidth(
 
   // Average advance width per glyph, as a fraction of the em, for Inter-like faces.
   const weightFactor = fontWeight >= 700 ? 0.6 : fontWeight >= 500 ? 0.56 : 0.53;
-  const capsFactor = textTransform === "uppercase" ? 1.16 : 1;
+
+  // Caps are wider than lowercase. `textTransform` is only half the story —
+  // template and user copy is very often typed in capitals already, which the
+  // property does not reflect.
+  const letters = text.replace(/[^a-zA-Z]/g, "");
+  const isShouty =
+    textTransform === "uppercase" ||
+    (letters.length > 0 && letters === letters.toUpperCase());
+  const capsFactor = isShouty ? 1.16 : 1;
 
   const longest = text.split("\n").reduce((max, line) => Math.max(max, line.length), 1);
-  return longest * (fontSize * weightFactor * capsFactor + letterSpacing);
+  const width = longest * (fontSize * weightFactor * capsFactor + letterSpacing);
+
+  // Headroom: this is an estimate, and a box a few percent too narrow breaks a
+  // headline across lines mid-word. A slightly wide box is invisible.
+  return width * 1.08;
 }
 
 /** Rough text box size — good enough for initial placement; the editor lets the

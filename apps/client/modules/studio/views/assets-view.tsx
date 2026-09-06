@@ -7,6 +7,8 @@ import {
   Image as ImageIcon,
   Loader2,
   Music4,
+  Pause,
+  Play,
   Trash2,
   Upload,
   Video,
@@ -31,6 +33,7 @@ import {
   type AssetRecord,
 } from "../api/studio-api";
 import { useAssetUpload } from "../hooks/use-asset-upload";
+import { useAudioPreview } from "../hooks/use-audio-preview";
 
 /**
  * The asset library (§39).
@@ -55,6 +58,7 @@ export function AssetsView() {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const { uploads, upload, retry, dismiss } = useAssetUpload();
+  const preview = useAudioPreview();
   const [deleteAsset] = useDeleteAssetMutation();
 
   React.useEffect(() => {
@@ -225,7 +229,13 @@ export function AssetsView() {
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
           {assets.map((asset) => (
-            <AssetCard key={asset.id} asset={asset} onDelete={() => setDeleting(asset)} />
+            <AssetCard
+              key={asset.id}
+              asset={asset}
+              onDelete={() => setDeleting(asset)}
+              playing={preview.playingId === asset.id}
+              onTogglePlay={() => preview.toggle(asset.id, asset.url)}
+            />
           ))}
         </div>
       )}
@@ -266,12 +276,39 @@ export function AssetsView() {
   );
 }
 
-function AssetCard({ asset, onDelete }: { asset: AssetRecord; onDelete: () => void }) {
+function AssetCard({
+  asset,
+  onDelete,
+  playing,
+  onTogglePlay,
+}: {
+  asset: AssetRecord;
+  onDelete: () => void;
+  playing: boolean;
+  onTogglePlay: () => void;
+}) {
   return (
     <article className="group relative overflow-hidden rounded-xl border border-border/70 bg-card transition-all hover:border-primary/35">
       <div className="relative flex aspect-square items-center justify-center bg-muted/40">
         {asset.type === "AUDIO" ? (
-          <Music4 className="size-6 text-muted-foreground" />
+          // Audio has no visual, so the tile itself is the play control.
+          <button
+            type="button"
+            onClick={onTogglePlay}
+            disabled={asset.status !== "READY"}
+            aria-label={playing ? `Stop ${asset.filename}` : `Play ${asset.filename}`}
+            className="grid size-full place-items-center transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed"
+          >
+            <span
+              className={cn(
+                "grid size-10 place-items-center rounded-full transition-colors",
+                playing ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+              )}
+            >
+              {playing ? <Pause className="size-4" /> : <Play className="size-4 translate-x-px" />}
+            </span>
+            <Music4 className="absolute right-2 bottom-2 size-3 text-muted-foreground" />
+          </button>
         ) : asset.type === "VIDEO" ? (
           <video src={asset.url} muted playsInline className="size-full object-cover" />
         ) : (

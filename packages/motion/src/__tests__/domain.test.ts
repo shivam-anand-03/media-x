@@ -8,6 +8,7 @@ import {
   createTextLayer,
   duplicateLayers,
   estimateRenderSeconds,
+  estimateTextWidth,
   isTerminal,
   normalizeZIndices,
   overallProgress,
@@ -426,6 +427,43 @@ describe("export job", () => {
   it("estimates longer renders for higher quality", () => {
     const doc = baseDoc();
     expect(estimateRenderSeconds(doc, "max")).toBeGreaterThan(estimateRenderSeconds(doc, "draft"));
+  });
+});
+
+describe("text box sizing", () => {
+  it("gives every template text layer a box wide enough for its own copy", () => {
+    // Regression guard: an under-estimated box makes the renderer wrap a
+    // headline mid-word, which is invisible until you look at an export.
+    for (const template of TEMPLATE_LIBRARY) {
+      for (const layer of template.document.layers) {
+        if (layer.type !== "text") continue;
+        const p = layer.properties;
+        const needed = estimateTextWidth(p.text, p.fontSize, p);
+        const available = layer.transform.width - p.paddingX * 2;
+        expect(
+          available + 0.5,
+          `${template.slug}: "${p.text.split("\n")[0]}" needs ${needed.toFixed(0)}px, box is ${available.toFixed(0)}px`,
+        ).toBeGreaterThanOrEqual(needed);
+      }
+    }
+  });
+
+  it("treats already-uppercase copy as wide as transformed uppercase", () => {
+    const shouty = estimateTextWidth("TECHFEST", 100, { fontWeight: 800, textTransform: "none" });
+    const transformed = estimateTextWidth("techfest", 100, { fontWeight: 800, textTransform: "uppercase" });
+    expect(shouty).toBeCloseTo(transformed, 5);
+  });
+
+  it("accounts for letter spacing", () => {
+    const tight = estimateTextWidth("HELLO", 40, { letterSpacing: 0 });
+    const tracked = estimateTextWidth("HELLO", 40, { letterSpacing: 10 });
+    expect(tracked).toBeGreaterThan(tight);
+  });
+
+  it("makes a heavier weight wider than a light one", () => {
+    expect(estimateTextWidth("Sample", 40, { fontWeight: 800 })).toBeGreaterThan(
+      estimateTextWidth("Sample", 40, { fontWeight: 300 }),
+    );
   });
 });
 

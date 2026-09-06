@@ -127,12 +127,18 @@ export class TemplateBuilder {
     const props: TextProperties = { ...preset.properties, text, fontSize: Math.round(this.canvas.width * preset.sizeRatio), ...overrides };
 
     const lines = text.split("\n");
-    const width =
-      Math.min(
-        this.canvas.width * 0.92,
-        Math.max(props.fontSize * 2, estimateTextWidth(text, props.fontSize, props)),
-      ) +
-      props.paddingX * 2;
+
+    // Shrink type that would not fit across the canvas rather than letting the
+    // renderer wrap it. Templates put their line breaks in explicitly, so an
+    // automatic wrap is always a layout accident, not the author's intent.
+    const maxWidth = this.canvas.width * 0.92 - props.paddingX * 2;
+    let estimated = estimateTextWidth(text, props.fontSize, props);
+    if (estimated > maxWidth) {
+      props.fontSize = Math.max(8, Math.floor(props.fontSize * (maxWidth / estimated)));
+      estimated = estimateTextWidth(text, props.fontSize, props);
+    }
+
+    const width = Math.min(maxWidth, Math.max(props.fontSize * 2, estimated)) + props.paddingX * 2;
     const height = lines.length * props.fontSize * props.lineHeight + props.paddingY * 2;
 
     this.layers.push({
