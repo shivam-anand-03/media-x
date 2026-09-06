@@ -9,8 +9,8 @@ import type {
   ShapeProperties,
   TextProperties,
   Transition,
-} from "../schema.js";
-import { TYPOGRAPHY_PRESETS, type TypographyPreset } from "../presets.js";
+} from "../schema";
+import { TYPOGRAPHY_PRESETS, type TypographyPreset } from "../presets";
 
 /**
  * A compact builder for authoring templates.

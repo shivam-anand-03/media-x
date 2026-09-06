@@ -1,7 +1,7 @@
 import * as React from "react";
 import { isKnownIcon, type Layer, type ResolvedLayer } from "@workspace/motion";
-import { gradientBackground, imageFilter, layerFrameStyle, textStyle } from "./layer-style.js";
-import { IconGlyph } from "./IconGlyph.js";
+import { gradientBackground, imageFilter, layerFrameStyle, textStyle } from "./layer-style";
+import { IconGlyph } from "./IconGlyph";
 
 /**
  * Paints one layer.

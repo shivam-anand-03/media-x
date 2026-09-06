@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@workspace/ui/components/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Slider } from "@workspace/ui/components/slider";
-import { useEditorStore, selectProjectColors } from "../../stores/editor-store";
+import { useProjectColors } from "../../stores/editor-store";
 
 /**
  * The colour picker (§23).
@@ -42,7 +42,7 @@ export function ColorPicker({
   className,
 }: ColorPickerProps) {
   const [open, setOpen] = React.useState(false);
-  const projectColors = useEditorStore(selectProjectColors);
+  const projectColors = useProjectColors();
   const [recents, setRecents] = React.useState<string[]>([]);
 
   React.useEffect(() => {

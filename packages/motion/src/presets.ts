@@ -7,7 +7,7 @@ import type {
   LoopAnimation,
   ShapeProperties,
   TextProperties,
-} from "./schema.js";
+} from "./schema";
 
 /**
  * Every fixed list the UI offers the user. Keeping them here — beside the

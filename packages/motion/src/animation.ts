@@ -5,7 +5,7 @@ import type {
   Layer,
   LoopConfig,
   Transition,
-} from "./schema.js";
+} from "./schema";
 
 /**
  * The animation engine.

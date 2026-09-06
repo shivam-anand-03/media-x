@@ -1,4 +1,4 @@
-import type { AudioTrack, Layer, ProjectDocument } from "./schema.js";
+import type { AudioTrack, Layer, ProjectDocument } from "./schema";
 
 /**
  * Pure operations over a project document.

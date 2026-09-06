@@ -3,16 +3,11 @@ import { ViewTransitions } from "next-view-transitions";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "@workspace/ui/components/sonner";
 import { StoreProvider } from "@/data-access/redux-service";
-import { RoleProtection } from "./role-protection";
 import { SocketProvider } from "./socket-provider";
 import { ThemeProvider } from "./theme-provider";
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <div className="text-primary-600 font-inter flex min-h-screen w-full">
-      <main className="flex w-full flex-col">{children}</main>
-    </div>
-  );
+  return <div className="font-inter flex min-h-screen w-full flex-col">{children}</div>;
 };
 
 export const AppRootProviders = ({
@@ -23,7 +18,7 @@ export const AppRootProviders = ({
   return (
     <ThemeProvider
       attribute="class"
-      defaultTheme="light"
+      defaultTheme="dark"
       enableSystem={false}
       disableTransitionOnChange
     >
@@ -38,11 +33,9 @@ export const AppRootProviders = ({
                 style: { top: "20px" },
               }}
             />
-            <RoleProtection>
-              <SocketProvider>
-                <AppLayout>{children}</AppLayout>
-              </SocketProvider>
-            </RoleProtection>
+            <SocketProvider>
+              <AppLayout>{children}</AppLayout>
+            </SocketProvider>
           </ViewTransitions>
         </NuqsAdapter>
       </StoreProvider>

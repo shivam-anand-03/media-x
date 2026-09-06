@@ -1,5 +1,5 @@
 import { registerRoot } from "remotion";
-import { RemotionRoot } from "./Root.js";
+import { RemotionRoot } from "./Root";
 
 /**
  * Remotion bundle entry point. `RenderService` bundles this file and renders
@@ -11,4 +11,4 @@ import { RemotionRoot } from "./Root.js";
  */
 registerRoot(RemotionRoot);
 
-export { ADVERTISEMENT_COMPOSITION_ID } from "./Root.js";
+export { ADVERTISEMENT_COMPOSITION_ID } from "./Root";

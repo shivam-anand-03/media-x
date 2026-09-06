@@ -53,6 +53,9 @@ importers:
       '@workspace/motion':
         specifier: workspace:*
         version: link:../../packages/motion
+      '@workspace/renderer':
+        specifier: workspace:*
+        version: link:../../packages/renderer
       '@workspace/schema':
         specifier: workspace:*
         version: link:../../packages/schema

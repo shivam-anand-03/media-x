@@ -5,10 +5,10 @@
  * editor, the API's validation layer and the Remotion render worker. If the
  * editor and the exported MP4 ever disagree, the bug is in a renderer, not here.
  */
-export * from "./schema.js";
-export * from "./animation.js";
-export * from "./presets.js";
-export * from "./layer-ops.js";
-export * from "./export.js";
-export * from "./templates/index.js";
-export * from "./api.js";
+export * from "./schema";
+export * from "./animation";
+export * from "./presets";
+export * from "./layer-ops";
+export * from "./export";
+export * from "./templates/index";
+export * from "./api";

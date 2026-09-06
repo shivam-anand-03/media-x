@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { canvasSchema, projectDocumentSchema } from "./schema.js";
-import { exportRequestSchema } from "./export.js";
+import { canvasSchema, projectDocumentSchema } from "./schema";
+import { exportRequestSchema } from "./export";
 
 /**
  * Request contracts for the studio API.

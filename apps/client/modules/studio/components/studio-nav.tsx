@@ -1,0 +1,193 @@
+"use client";
+
+import * as React from "react";
+import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  FolderOpen,
+  HelpCircle,
+  LayoutGrid,
+  LayoutTemplate,
+  LogOut,
+  Search,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@workspace/ui/components/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
+import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { BrandLogo } from "@/components/global/brand-logo";
+import { ThemeToggle } from "@/components/global/theme-toggle";
+import { useUser } from "@/hooks/use-user";
+import { useLogoutMutation } from "@/modules/auth/api/auth-api";
+import { ShortcutsDialog } from "./editor/shortcuts-dialog";
+
+/** Workspace navigation (§6). */
+const LINKS = [
+  { href: "/dashboard", label: "Projects", icon: LayoutGrid },
+  { href: "/templates", label: "Templates", icon: LayoutTemplate },
+  { href: "/assets", label: "Assets", icon: FolderOpen },
+];
+
+export function StudioNav() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user } = useUser();
+  const [logout] = useLogoutMutation();
+  const [helpOpen, setHelpOpen] = React.useState(false);
+
+  const initials = React.useMemo(() => {
+    const first = user?.firstName?.[0] ?? "";
+    const last = user?.lastName?.[0] ?? "";
+    return (first + last).toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
+  }, [user]);
+
+  const signOut = async () => {
+    try {
+      await logout().unwrap();
+    } catch {
+      // Even if the call fails, clear locally — the cookie may already be gone.
+    } finally {
+      window.location.href = "/sign-in";
+    }
+  };
+
+  return (
+    <TooltipProvider delay={400}>
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-card/85 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+          <BrandLogo />
+
+          <nav aria-label="Workspace" className="ml-4 hidden items-center gap-0.5 sm:flex">
+            {LINKS.map(({ href, label, icon: Icon }) => {
+              const active = pathname === href || pathname.startsWith(`${href}/`);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <Icon className="size-3.5" />
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="ml-auto flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label="Search projects"
+                    className="text-muted-foreground"
+                    onClick={() => router.push("/dashboard")}
+                  >
+                    <Search className="size-4" />
+                  </Button>
+                }
+              />
+              <TooltipContent>Search projects</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label="Keyboard shortcuts"
+                    className="text-muted-foreground"
+                    onClick={() => setHelpOpen(true)}
+                  >
+                    <HelpCircle className="size-4" />
+                  </Button>
+                }
+              />
+              <TooltipContent>Keyboard shortcuts</TooltipContent>
+            </Tooltip>
+
+            <ThemeToggle className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" />
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Account menu"
+                  className="ml-1 rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  <Avatar className="size-8">
+                    <AvatarFallback className="bg-primary/12 text-[11px] font-bold text-primary">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuLabel className="min-w-0">
+                  <span className="block truncate text-xs font-semibold text-foreground">
+                    {[user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Your account"}
+                  </span>
+                  {user?.email && (
+                    <span className="block truncate text-[11px] font-normal text-muted-foreground">
+                      {user.email}
+                    </span>
+                  )}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setHelpOpen(true)}>
+                  <HelpCircle className="size-3.5" />
+                  Keyboard shortcuts
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={() => void signOut()}>
+                  <LogOut className="size-3.5" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Mobile nav */}
+        <nav aria-label="Workspace" className="flex gap-1 border-t border-border/60 px-4 py-1.5 sm:hidden">
+          {LINKS.map(({ href, label, icon: Icon }) => {
+            const active = pathname === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-medium transition-colors",
+                  active ? "bg-primary/10 text-primary" : "text-muted-foreground",
+                )}
+              >
+                <Icon className="size-3.5" />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+      </header>
+
+      <ShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} />
+    </TooltipProvider>
+  );
+}

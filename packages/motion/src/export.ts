@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { ProjectDocument } from "./schema.js";
-import { totalFrames } from "./layer-ops.js";
+import type { ProjectDocument } from "./schema";
+import { totalFrames } from "./layer-ops";
 
 /**
  * Export/render domain: the job lifecycle shared by the API, the BullMQ worker

@@ -4,8 +4,8 @@ import {
   sceneAtTime,
   type ProjectDocument,
 } from "@workspace/motion";
-import { backgroundStyle, visibleLayersAtTime } from "./layer-style.js";
-import { LayerRenderer, type LayerRendererProps } from "./LayerRenderer.js";
+import { backgroundStyle, visibleLayersAtTime } from "./layer-style";
+import { LayerRenderer, type LayerRendererProps } from "./LayerRenderer";
 
 /**
  * A single frame of an advertisement, at native canvas resolution.

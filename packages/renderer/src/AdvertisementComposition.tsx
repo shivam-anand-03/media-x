@@ -14,7 +14,7 @@ import {
   resolveAudioVolumeAtTime,
   type ProjectDocument,
 } from "@workspace/motion";
-import { AdvertisementStage } from "./AdvertisementStage.js";
+import { AdvertisementStage } from "./AdvertisementStage";
 
 /**
  * The Remotion composition.

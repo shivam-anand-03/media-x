@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Circle, Group, Image as KonvaImage, Line, Path, Rect, Text, RegularPolygon, Star } from "react-konva";
+import { Ellipse, Group, Image as KonvaImage, Line, Path, Rect, Text, RegularPolygon, Star } from "react-konva";
 import type Konva from "konva";
 import { getIconPath } from "./icon-paths";
 import type { Layer, ResolvedLayer } from "@workspace/motion";
@@ -449,8 +449,17 @@ function ShapeContent({
 
   switch (p.kind) {
     case "circle":
+      // Ellipse, not Circle: a shape layer's box is rarely square, and
+      // Konva's Circle takes a single radius (radiusX/radiusY are Ellipse-only
+      // props that Circle silently ignores).
       return (
-        <Circle {...common} x={width / 2} y={height / 2} radiusX={width / 2} radiusY={height / 2} radius={Math.min(width, height) / 2} scaleX={width / Math.min(width, height)} scaleY={height / Math.min(width, height)} />
+        <Ellipse
+          {...common}
+          x={width / 2}
+          y={height / 2}
+          radiusX={width / 2}
+          radiusY={height / 2}
+        />
       );
 
     case "triangle":
@@ -571,16 +580,15 @@ function GradientContent({
       : [0, p.from, 1, p.to];
 
   return (
-    <Circle
+    <Ellipse
       x={width / 2}
       y={height / 2}
-      radius={Math.min(width, height) / 2}
-      scaleX={width / Math.min(width, height)}
-      scaleY={height / Math.min(width, height)}
+      radiusX={width / 2}
+      radiusY={height / 2}
       fillRadialGradientStartPoint={{ x: 0, y: 0 }}
       fillRadialGradientStartRadius={0}
       fillRadialGradientEndPoint={{ x: 0, y: 0 }}
-      fillRadialGradientEndRadius={Math.min(width, height) / 2}
+      fillRadialGradientEndRadius={Math.max(width, height) / 2}
       fillRadialGradientColorStops={stops}
       listening={false}
       perfectDrawEnabled={false}

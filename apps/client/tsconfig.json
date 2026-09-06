@@ -8,7 +8,9 @@
       "@workspace/data-access/*": ["../../packages/data-access/src/*"],
       "@workspace/ui/*": ["../../packages/ui/src/*"],
       "@workspace/motion": ["../../packages/motion/src/index.ts"],
-      "@workspace/motion/*": ["../../packages/motion/src/*"]
+      "@workspace/motion/*": ["../../packages/motion/src/*"],
+      "@workspace/renderer/preview": ["../../packages/renderer/src/preview.ts"],
+      "@workspace/renderer/*": ["../../packages/renderer/src/*"]
     },
     "plugins": [
       {

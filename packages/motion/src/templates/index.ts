@@ -1,5 +1,5 @@
-import type { ProjectDocument } from "../schema.js";
-import { template } from "./builder.js";
+import type { ProjectDocument } from "../schema";
+import { template } from "./builder";
 
 /**
  * The starter template library.

@@ -554,5 +554,3 @@ function AppearanceSection({ layer }: { layer: Layer }) {
     </InspectorSection>
   );
 }
-
-export { CANVAS_PRESETS, describeCanvas };

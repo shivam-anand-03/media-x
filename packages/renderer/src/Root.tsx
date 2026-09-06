@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Composition } from "remotion";
 import { SAMPLE_PROJECT, totalFrames, type ProjectDocument } from "@workspace/motion";
-import { AdvertisementComposition } from "./AdvertisementComposition.js";
+import { AdvertisementComposition } from "./AdvertisementComposition";
 
 export const ADVERTISEMENT_COMPOSITION_ID = "Advertisement";
 

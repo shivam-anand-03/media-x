@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import {
@@ -560,11 +561,19 @@ export const selectSingleSelectedLayer = (s: EditorStore): Layer | null => {
   return s.document.layers.find((l) => l.id === s.selectedLayerIds[0]) ?? null;
 };
 
-export const selectProjectColors = (s: EditorStore): string[] =>
-  s.document ? collectProjectColors(s.document) : [];
+/**
+ * Colours in use across the project.
+ *
+ * Must be a hook rather than a plain selector: `collectProjectColors` builds a
+ * new array each call, and Zustand compares snapshots by reference — returning
+ * a fresh array from a selector makes `useSyncExternalStore` re-render forever.
+ * Selecting the (stable) document and memoising the derivation fixes that.
+ */
+export function useProjectColors(): string[] {
+  const document = useEditorStore((s) => s.document);
+  return useMemo(() => (document ? collectProjectColors(document) : []), [document]);
+}
 
 /** Stable factory for subscribing to exactly one layer. */
 export const makeLayerSelector = (id: string) => (s: EditorStore) =>
   s.document?.layers.find((l) => l.id === id) ?? null;
-
-export { createId };
