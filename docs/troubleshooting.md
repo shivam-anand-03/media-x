@@ -23,9 +23,9 @@ Retry from the dialog.
 Seeding runs at boot and logs `🎬 Templates seeded`. If it is missing, MongoDB was
 unreachable — seeding is non-fatal by design and never blocks startup.
 
-**`🗄️ Storage driver "gcs" cannot write`**
+**`🗄️ Storage driver "local" cannot write`**
 The boot preflight caught a misconfiguration and printed the exact `gcloud` command.
-See [storage](storage.md#switching-to-gcs).
+See [storage](storage.md).
 
 ---
 
@@ -33,7 +33,7 @@ See [storage](storage.md#switching-to-gcs).
 
 **"Video unavailable" / "Image unavailable" on the canvas**
 
-1. **Does the file exist?** With `STORAGE_DRIVER=local`, check
+1. **Does the file exist?** Check
    `apps/server/uploads/`. Deleting that directory orphans asset records — the
    library still lists them, but every URL 404s.
 2. **CORS.** The canvas loads media with `crossOrigin="anonymous"` (needed for
@@ -45,7 +45,6 @@ See [storage](storage.md#switching-to-gcs).
    You should see `Access-Control-Allow-Origin`. If not, `cors()` must be registered
    *before* the `/uploads` static mount in `app.ts` — mounted first, static files get
    no CORS headers and every image and video silently fails.
-3. **On GCS**, the bucket needs a CORS policy allowing your client origin.
 
 **Audio is silent**
 
@@ -145,8 +144,6 @@ Watch the toolbar indicator. `Unable to save` shows the reason and a Retry.
   both work.
 - **Video layers in the editor** are drawn by seeking a hidden `<video>`, so
   scrubbing is approximate. The export is frame-accurate via `OffthreadVideo`.
-- **`makePublic` is a no-op** on buckets with uniform bucket-level access; access is
-  governed by bucket IAM there instead.
 - **One render at a time** by default (`RENDER_CONCURRENCY=1`). Raise it only with
   the RAM to match — each render runs a Chrome instance.
 - **Deleting `apps/server/uploads/`** orphans asset records. There is no garbage

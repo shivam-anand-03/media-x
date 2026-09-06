@@ -127,7 +127,7 @@ Returns a ticket:
 
 ### 2 · `PUT <uploadUrl>`
 
-Raw bytes, with the returned headers. Goes straight to GCS, or to the local
+Raw bytes, with the returned headers. Goes to the local
 driver's HMAC-signed endpoint.
 
 ### 3 · `POST /assets/confirm`
@@ -207,7 +207,7 @@ the runner discards the output when it finishes.
 
 Query: `disposition=attachment` (default) or `inline`.
 
-Checks ownership, then **302**s to a short-lived signed URL (GCS) or streams the file
+Streams the file
 (local), with `Content-Disposition` set and a filename derived from the project.
 
 ### `GET /projects/:id/exports`

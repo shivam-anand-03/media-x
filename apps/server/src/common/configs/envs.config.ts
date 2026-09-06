@@ -28,24 +28,11 @@ export const envs = {
   // DATABASE CONFIGS
   MONGODB_URI: process.env.MONGODB_URI as string,
 
-  // GCP CONFIGS
-  GCP_PROJECT_ID: process.env.GCP_PROJECT_ID as string,
-  GCP_BUCKET_NAME: process.env.GCP_BUCKET_NAME as string,
-  GCP_KEY_PATH: process.env.GCP_KEY_PATH as string,
-
   // ---------------------------------------------------------------------
   // Motion Studio
   // ---------------------------------------------------------------------
 
-  /**
-   * Which object-storage driver backs asset uploads.
-   * `gcs`   — signed-URL uploads straight to the bucket (production).
-   * `local` — uploads land in ./uploads and are served from /uploads. The
-   *           upload *flow* is identical either way, so nothing downstream
-   *           has to care which one is active.
-   */
-  STORAGE_DRIVER: (process.env.STORAGE_DRIVER || "local") as "gcs" | "local",
-  /** Signs the local driver's upload tickets so /uploads is not world-writable. */
+  /** Signs upload tickets so /uploads is not a world-writable endpoint. */
   UPLOAD_SIGNING_SECRET:
     process.env.UPLOAD_SIGNING_SECRET || "motion-studio-local-upload-secret",
   /** Minutes an upload ticket stays valid. */

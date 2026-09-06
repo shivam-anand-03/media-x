@@ -126,7 +126,7 @@ how two real bugs were found: exports below 100% quality were **cropped to the
 top-left corner**, and `TECHFEST` was **wrapping mid-word**. Neither would have been
 caught by any assertion I had written.
 
-**Storage** — signed-URL download verified against a live GCS bucket (200, correct
+**Storage** — download verified end to end from local disk (200, correct
 `Content-Disposition`); IAM permissions probed to diagnose a read-only service
 account.
 

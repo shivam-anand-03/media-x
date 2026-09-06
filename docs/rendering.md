@@ -160,12 +160,10 @@ it is the reason a horizontally-scaled deployment would need one back.
 
 `GET /v1/exports/:id/download[?disposition=inline]`
 
-Served through the API, which is what lets the bucket stay private.
-
-- **GCS** → 302 to a short-lived signed URL carrying `Content-Disposition`. A
-  cross-origin `<a download>` is ignored by browsers, so the header has to come from
-  storage itself.
-- **local** → stream the file with the same header.
+The file is streamed from disk with a `Content-Disposition` header, so the export
+tree is never exposed through `/uploads` directly. Serving it through the API is also
+what makes the download name work: a cross-origin `<a download>` is ignored by
+browsers, so the header has to come from the response.
 
 The filename is derived from the project name (`my-tech-fest.mp4`).
 

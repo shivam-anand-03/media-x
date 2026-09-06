@@ -46,7 +46,6 @@ MONGODB_URI="mongodb://127.0.0.1:27017/motion_studio"
 CLIENT_WEB_APP_URL="http://localhost:3000"
 SERVER_APP_URL="http://localhost:5030"      # used to build upload + media URLs
 
-STORAGE_DRIVER="local"                       # local | gcs
 UPLOAD_SIGNING_SECRET="change-me-in-production"
 ```
 
@@ -62,7 +61,6 @@ Note the `/v1` — the client talks to the versioned API prefix.
 
 | Variable | Default | Effect |
 |---|---|---|
-| `STORAGE_DRIVER` | `local` | `gcs` uploads to a bucket instead of disk — see [storage](storage.md) |
 | `OPEN_AI_API_KEY` | — | Enables the LLM planner; without it the offline planner is used |
 | `RENDER_CONCURRENCY` | `1` | Simultaneous renders in the API process — each costs a Chrome |
 | `RENDER_TIMEOUT_MS` | `600000` | Hard ceiling on a single render |
@@ -144,7 +142,7 @@ API process, so a restart orphans anything mid-flight; the server fails those ro
 at boot with `WORKER_UNAVAILABLE` and the dialog offers a retry.
 
 **Media shows "unavailable" in the editor** — the file's URL is not loading. With
-`STORAGE_DRIVER=local`, check the file exists under `apps/server/uploads/`. Deleting
+uploads on disk, check the file exists under `apps/server/uploads/`. Deleting
 that directory orphans asset records: the library still lists them, but they 404.
 
 **First export takes minutes** — Remotion is downloading Chrome. Watch the server log
@@ -153,7 +151,7 @@ for `Downloading Chrome Headless Shell`. Subsequent renders reuse it.
 **Export fails immediately** — the dialog shows a reference code. See
 [rendering → failure codes](rendering.md#failure-codes).
 
-**`🗄️ Storage driver "gcs" cannot write`** — the boot preflight caught a
-misconfiguration and printed the exact IAM command to fix it. See [storage](storage.md).
+**`🗄️ Storage driver "local" cannot write`** — the boot preflight could not create
+`apps/server/uploads/`. Check directory permissions. See [storage](storage.md).
 
 More: [docs/troubleshooting.md](troubleshooting.md)

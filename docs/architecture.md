@@ -160,8 +160,8 @@ document cannot point the worker at `file:///etc/passwd`.
 
 The browser asks for an upload ticket, PUTs bytes straight at storage, then
 confirms. The API process handles metadata only. Both storage drivers implement the
-same handshake, so the client code is identical whether the deployment has a GCS
-bucket or nothing configured.
+same handshake, so the client code would not change if a bucket-backed driver were
+added behind the interface.
 
 ---
 
@@ -192,7 +192,7 @@ The editor stays responsive on large projects through a few specific choices.
 | Uploads | MIME allow-list and size cap enforced *before* a storage key is issued |
 | Upload keys | `media/…`; confirming a key outside that prefix is rejected |
 | Local upload endpoint | HMAC-signed ticket binding key, content type, size and expiry |
-| Downloads | Ownership checked, then a short-lived signed URL — the bucket stays private |
+| Downloads | Streamed through the API, so the export tree is never served from /uploads |
 | Error detail | Stack traces are logged server-side; the client receives a code |
 
 ---

@@ -13,7 +13,6 @@ import { ApiResponse, AsyncHandler } from "@/common/utils/api-utils";
 import { NotFoundError, ValidationError } from "@/common/utils/error-utils";
 import { logger } from "@/common/helper/logger";
 import { ExportJobModel, ProjectModel, type IExportJobDocument } from "@/core/models";
-import { objectStorage } from "@/common/services/object-storage.service";
 import { cancelRender, startRender } from "@/renderer/render-runner";
 import { ProjectService } from "../project/project.service";
 
@@ -163,12 +162,9 @@ class ExportController {
   /**
    * GET /v1/exports/:id/download
    *
-   * The only way a rendered video leaves the system, so the bucket itself never
-   * has to be public:
-   *   - GCS   → redirect to a short-lived signed URL carrying a
-   *             Content-Disposition header (a cross-origin `<a download>` is
-   *             ignored by browsers, so the header must come from storage).
-   *   - local → stream the file directly with the same header.
+   * The only way a rendered video leaves the system: the file is streamed from
+   * disk with a Content-Disposition header, so /uploads never has to expose the
+   * export tree directly.
    *
    * `?disposition=inline` is used by the dialog's Preview button.
    */
@@ -183,28 +179,17 @@ class ExportController {
     const project = await ProjectModel.findById(job.projectId).select("name").lean();
     const filename = buildDownloadName(project?.name ?? "advertisement", job.format);
 
-    const storage = objectStorage();
-
-    if (storage.name === "local") {
-      const absolute = path.join(process.cwd(), "uploads", job.storagePath);
-      // `res.download`/`sendFile` both 404 cleanly if the file vanished.
-      res.setHeader("Content-Disposition", `${disposition}; filename="${filename}"`);
-      res.setHeader("Content-Type", CONTENT_TYPES[job.format] ?? "application/octet-stream");
-      return res.sendFile(absolute, (error) => {
-        if (error && !res.headersSent) {
-          res.status(404).json({ status: "failed", message: "The rendered file is no longer available." });
-        }
-      });
-    }
-
-    const url = await storage.signedReadUrl(job.storagePath, {
-      filename,
-      disposition,
-      expiresInMinutes: 15,
-    });
+    const absolute = path.join(process.cwd(), "uploads", job.storagePath);
+    // `res.download`/`sendFile` both 404 cleanly if the file vanished.
+    res.setHeader("Content-Disposition", `${disposition}; filename="${filename}"`);
+    res.setHeader("Content-Type", CONTENT_TYPES[job.format] ?? "application/octet-stream");
 
     logger.info("Export download issued", { exportJobId: job.id, disposition });
-    return res.redirect(302, url);
+    return res.sendFile(absolute, (error) => {
+      if (error && !res.headersSent) {
+        res.status(404).json({ status: "failed", message: "The rendered file is no longer available." });
+      }
+    });
   });
 
   // -------------------------------------------------------------------------

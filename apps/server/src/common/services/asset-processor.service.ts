@@ -60,12 +60,6 @@ async function processAsset(assetId: string): Promise<void> {
       if (thumb) asset.thumbnailUrl = thumb;
     }
 
-    // A saved project references media by URL, so that URL has to stay valid
-    // indefinitely — a signed URL would expire and silently break the project.
-    // Publishing the object gives a stable address; the storage key is long and
-    // random, so it is not guessable. No-op on the local driver.
-    await storage.makePublic?.(asset.storagePath);
-
     asset.status = AssetStatus.READY;
     asset.error = null;
     await asset.save();
@@ -115,13 +109,7 @@ async function buildImageThumbnail(storagePath: string, mimeType: string): Promi
 }
 
 async function readObject(storagePath: string): Promise<Buffer | null> {
-  const storage = objectStorage();
-  if (storage.name === "local") {
-    const path = await import("path");
-    const { promises: fs } = await import("fs");
-    return fs.readFile(path.join(process.cwd(), "uploads", storagePath)).catch(() => null);
-  }
-  const { bucket } = await import("../configs/gcp.config.js");
-  const [buffer] = await bucket.file(storagePath).download();
-  return buffer;
+  const path = await import("path");
+  const { promises: fs } = await import("fs");
+  return fs.readFile(path.join(process.cwd(), "uploads", storagePath)).catch(() => null);
 }

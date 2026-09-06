@@ -25,33 +25,25 @@ Browser                       API                        Storage
    │                           │  start processing ─────────►
 ```
 
-Both drivers implement exactly this, so the client code is identical whether the
-deployment has a GCS bucket or nothing configured at all.
+The handshake is defined by the `StorageDriver` interface rather than by the one
+implementation, so a bucket-backed driver could be added later without the browser
+code changing at all.
 
 ---
 
-## Drivers
+## The driver
 
-Selected by `STORAGE_DRIVER`.
-
-### `local` (default)
-
-Files land in `apps/server/uploads/` and are served from `/uploads`.
+One driver ships: **local disk**. Files land in `apps/server/uploads/` and are served
+from `/uploads`. Zero configuration, and nothing to reach over the network.
 
 The upload target is `PUT /v1/assets/upload`. Authorisation comes from an **HMAC-signed
 ticket** binding the key, content type, size and expiry — without it that route
 would be an open write endpoint. Paths are resolved and rejected if they escape the
 uploads root.
 
-Zero configuration. Good for development and single-server deployments.
-
-### `gcs`
-
-Uploads go straight to the bucket via a v4 signed **write** URL, with
-`x-goog-content-length-range` binding the size so a ticket for a 2 MB image cannot
-be reused for a 2 GB file.
-
-Requires `GCP_PROJECT_ID`, `GCP_BUCKET_NAME`, `GCP_KEY_PATH`.
+> There is no cloud storage driver. Uploads, thumbnails and rendered exports all live
+> on the server's disk, which means `apps/server/uploads/` is real state: back it up,
+> and mount it on a volume if the process runs in a container.
 
 ---
 
@@ -61,43 +53,21 @@ Two different needs, two different mechanisms.
 
 ### Assets → stable public URLs
 
-A saved project references media **by URL, inside the document**. A signed URL would
-expire and silently break the project weeks later. So on GCS, uploaded objects are
-made public after processing. Storage keys are long and random
-(`media/<kind>/<timestamp>-<12 hex>-<name>`), so they are not guessable.
+A saved project references media **by URL, inside the document**, so that URL has to
+stay valid indefinitely — an expiring URL would silently break the project weeks
+later. Assets are therefore served from the stable `/uploads/<key>` address. Storage
+keys are long and random (`media/<kind>/<timestamp>-<12 hex>-<name>`), so they are
+not guessable.
 
-`makePublic` fails harmlessly on buckets with uniform bucket-level access, where
-per-object ACLs are rejected and access is governed by bucket IAM instead.
+### Exports → streamed through the API
 
-### Exports → short-lived signed URLs
-
-Finished videos are **not** public. `GET /v1/exports/:id/download` checks ownership,
-then hands back a v4 signed read URL valid for 15 minutes.
-
-The signed URL carries `response-content-disposition`, which is what actually makes
-the browser save the file under a sensible name — a cross-origin `<a download>` is
-ignored, so the header has to come from the object store itself.
+Finished videos are not linked directly. `GET /v1/exports/:id/download` streams the
+file with a `Content-Disposition` header, which is what actually makes the browser
+save it under a sensible name — a cross-origin `<a download>` is ignored, so the
+header has to come from the response. It also keeps the export tree out of the
+publicly-served `/uploads` path.
 
 ---
-
-## Switching to GCS
-
-```bash
-STORAGE_DRIVER="gcs"
-GCP_PROJECT_ID="your-project"
-GCP_BUCKET_NAME="your-bucket"
-GCP_KEY_PATH="./keys/gcp_key.json"
-```
-
-The service account needs **write** access to the bucket:
-
-```bash
-gcloud storage buckets add-iam-policy-binding gs://YOUR_BUCKET \
-  --member=serviceAccount:YOUR_SA@YOUR_PROJECT.iam.gserviceaccount.com \
-  --role=roles/storage.objectAdmin
-```
-
-Read-only credentials are not enough — uploads and exports both write.
 
 ### The boot preflight
 
@@ -111,23 +81,11 @@ server checks write access at boot, while someone is still watching the logs:
 or, when it cannot write:
 
 ```
-🗄️  Storage driver "gcs" cannot write — uploads and exports will fail:
-    the service account is missing storage.objects.create, storage.objects.delete
-    on gs://your-bucket. Grant it with: gcloud storage buckets add-iam-policy-binding …
+🗄️  Storage driver "local" cannot write — uploads and exports will fail:
+    EACCES: permission denied, mkdir '/srv/app/apps/server/uploads'
 ```
 
 Loud but **non-fatal** — the rest of the app works fine without uploads.
-
-Three values must agree, and a mismatch is the most common misconfiguration:
-
-| | |
-|---|---|
-| `GCP_PROJECT_ID` | the project owning the bucket |
-| `GCP_BUCKET_NAME` | the bucket |
-| service account in `GCP_KEY_PATH` | must have `objectAdmin` **on that bucket** |
-
-A service account from a different project is fine, *provided* it has been granted
-access to the bucket.
 
 ---
 
@@ -137,17 +95,9 @@ Uploaded media is loaded by the editor's canvas, which needs pixel access for
 thumbnail capture — so images and video are requested with
 `crossOrigin="anonymous"`, and the browser then requires CORS headers.
 
-- **local** — `cors()` is registered *before* the `/uploads` static mount. Order
-  matters: mounted first, static files get no `Access-Control-Allow-Origin` and every
-  image and video silently fails to load.
-- **gcs** — the bucket needs a CORS policy allowing your client origin:
-
-```json
-[{ "origin": ["https://your-app.com"],
-   "method": ["GET", "HEAD"],
-   "responseHeader": ["Content-Type", "Content-Length", "Range"],
-   "maxAgeSeconds": 3600 }]
-```
+`cors()` is registered *before* the `/uploads` static mount. Order matters: mounted
+first, static files get no `Access-Control-Allow-Origin` and every image and video
+silently fails to load.
 
 > **Audio elements deliberately do *not* set `crossOrigin`.** Playback never needs
 > CORS — only canvas pixel access does — and requiring it turns any un-headered host
@@ -161,19 +111,18 @@ thumbnail capture — so images and video are requested with
 
 ```ts
 interface StorageDriver {
-  readonly name: "gcs" | "local";
+  readonly name: "local";
   createUploadTicket(input): Promise<UploadTicket>;
   head(storagePath): Promise<{ exists: boolean; size: number }>;
   putBuffer(storagePath, buffer, mimeType): Promise<string>;
   publicUrl(storagePath): string;
   delete(storagePath): Promise<void>;
   signedReadUrl(storagePath, opts?): Promise<string>;
-  makePublic?(storagePath): Promise<void>;
   verifyWritable(): Promise<{ ok: boolean; reason?: string }>;
 }
 ```
 
-Adding S3, R2 or Azure means implementing this interface and adding a case to
+Adding S3, R2, GCS or Azure means implementing this interface and returning it from
 `objectStorage()`. Nothing else changes.
 
 ---
@@ -186,8 +135,7 @@ After confirm, background asset processing:
    failed,
 2. trusts the real byte count over the size the client claimed,
 3. generates a 480px WebP thumbnail for images via `sharp`,
-4. publishes the object on GCS,
-5. flips the asset to `READY`; the client polls `GET /assets/:id` until it settles.
+4. flips the asset to `READY`; the client polls `GET /assets/:id` until it settles.
 
 A failed thumbnail is a cosmetic downgrade, not a reason to mark a good upload
 broken — `sharp` is imported lazily and its failure is swallowed. A genuinely missing

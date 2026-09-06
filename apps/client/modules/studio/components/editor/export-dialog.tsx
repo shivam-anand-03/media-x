@@ -268,12 +268,11 @@ function ProgressStep({
 }
 
 /**
- * Sends the browser to the authenticated download route.
+ * Sends the browser to the export download route.
  *
- * Deliberately not the raw `outputUrl`: on GCS the bucket is private, so the
- * server checks ownership and hands back a short-lived signed URL carrying the
- * right Content-Disposition. A plain link to storage would either 403 or, if
- * the bucket were public, skip the ownership check entirely.
+ * Deliberately not the raw `outputUrl`: the route streams the file with the
+ * right Content-Disposition header, which is what makes the browser save it
+ * under the project's name instead of opening it in a tab.
  */
 function openExport(jobId: string, disposition: "inline" | "attachment") {
   const base = process.env.NEXT_PUBLIC_WEB_SERVER_URL;

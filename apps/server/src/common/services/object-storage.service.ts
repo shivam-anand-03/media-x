@@ -3,16 +3,15 @@ import path from "path";
 import { promises as fs } from "fs";
 import { envs } from "@/common/configs/envs.config";
 import { logger } from "@/common/helper/logger";
-import { AppError, ValidationError } from "@/common/utils/error-utils";
+import { ValidationError } from "@/common/utils/error-utils";
 
 /**
  * Object storage behind a driver interface.
  *
  * §35 requires that media never flows through the API process: the client asks
- * for an upload ticket, PUTs the bytes straight at storage, then confirms. The
- * two drivers below both implement exactly that handshake, so the browser code
- * is identical whether the deployment has a GCS bucket or is a student running
- * `pnpm dev` with nothing configured.
+ * for an upload ticket, PUTs the bytes straight at storage, then confirms. Only
+ * a local-disk driver is implemented — the interface is kept so a bucket-backed
+ * driver can be added without touching any calling code.
  */
 
 export interface UploadTicket {
@@ -28,7 +27,7 @@ export interface UploadTicket {
 }
 
 export interface StorageDriver {
-  readonly name: "gcs" | "local";
+  readonly name: "local";
   createUploadTicket(input: {
     storagePath: string;
     mimeType: string;
@@ -42,17 +41,14 @@ export interface StorageDriver {
   /**
    * A time-limited URL for reading one object.
    *
-   * This is how a finished video leaves the system: the bucket itself can stay
-   * private, and the browser is handed a URL that works for minutes rather than
-   * forever. `filename` sets the download name; `disposition: "attachment"`
-   * makes the browser save rather than stream it in a tab.
+   * `filename` sets the download name; `disposition: "attachment"` makes the
+   * browser save rather than stream it in a tab. The local driver serves from
+   * /uploads and needs neither, but the shape is kept for a future driver.
    */
   signedReadUrl(
     storagePath: string,
     options?: { filename?: string; disposition?: "inline" | "attachment"; expiresInMinutes?: number },
   ): Promise<string>;
-  /** Best-effort: make an object world-readable (see the note in the GCS driver). */
-  makePublic?(storagePath: string): Promise<void>;
   /**
    * Checks the driver can actually write, so a misconfiguration surfaces at
    * boot rather than on a student's first upload.
@@ -97,7 +93,7 @@ export function assertUploadAllowed(kind: UploadKind, mimeType: string, size: nu
   }
 }
 
-/** Strips anything that could escape the intended prefix or confuse a bucket. */
+/** Strips anything that could escape the intended prefix. */
 export function sanitizeFilename(name: string): string {
   const base = path.basename(name).toLowerCase();
   const cleaned = base
@@ -107,8 +103,6 @@ export function sanitizeFilename(name: string): string {
   return cleaned.slice(0, 120) || "file";
 }
 
-/** `users/<userId>/<kind>/<random>-<name>` — user-scoped so one user's key can
- *  never collide with, or be guessed from, another's. */
 /** Prefix every uploaded object shares. Confirm checks it, so a client cannot
  *  claim an arbitrary key such as an export or a path outside the media tree. */
 export const MEDIA_PREFIX = "media";
@@ -231,146 +225,7 @@ class LocalStorageDriver implements StorageDriver {
 }
 
 // ---------------------------------------------------------------------------
-// GCS driver
-// ---------------------------------------------------------------------------
-
-class GcsStorageDriver implements StorageDriver {
-  readonly name = "gcs" as const;
-
-  // Imported lazily so a deployment running the local driver never needs GCP
-  // credentials present just to boot.
-  private async bucket() {
-    const { bucket } = await import("../configs/gcp.config.js");
-    return bucket;
-  }
-
-  async createUploadTicket({ storagePath, mimeType, size }: { storagePath: string; mimeType: string; size: number }) {
-    const bucket = await this.bucket();
-    const expires = Date.now() + envs.UPLOAD_URL_TTL_MINUTES * 60_000;
-    const [uploadUrl] = await bucket.file(storagePath).getSignedUrl({
-      version: "v4",
-      action: "write",
-      expires,
-      contentType: mimeType,
-      // Binding the length stops a ticket for a 2MB image being reused to
-      // upload a 2GB file.
-      extensionHeaders: { "x-goog-content-length-range": `0,${size}` },
-    });
-
-    return {
-      uploadUrl,
-      headers: { "Content-Type": mimeType, "x-goog-content-length-range": `0,${size}` },
-      storagePath,
-      publicUrl: this.publicUrl(storagePath),
-      expiresAt: new Date(expires).toISOString(),
-    };
-  }
-
-  async head(storagePath: string) {
-    const bucket = await this.bucket();
-    const file = bucket.file(storagePath);
-    const [exists] = await file.exists();
-    if (!exists) return { exists: false, size: 0 };
-    const [metadata] = await file.getMetadata();
-    return { exists: true, size: Number(metadata.size ?? 0) };
-  }
-
-  async putBuffer(storagePath: string, buffer: Buffer, mimeType: string) {
-    const bucket = await this.bucket();
-    await bucket.file(storagePath).save(buffer, { resumable: false, contentType: mimeType });
-    return this.publicUrl(storagePath);
-  }
-
-  publicUrl(storagePath: string): string {
-    return `https://storage.googleapis.com/${envs.GCP_BUCKET_NAME}/${storagePath}`;
-  }
-
-  async delete(storagePath: string) {
-    const bucket = await this.bucket();
-    await bucket
-      .file(storagePath)
-      .delete()
-      .catch(() => {});
-  }
-
-  /**
-   * A v4 signed read URL. This is what lets the bucket stay private: nothing is
-   * world-readable, and each download is a short-lived, per-request grant.
-   *
-   * `responseDisposition` is what actually makes a browser save the file under
-   * a sensible name — a cross-origin `<a download>` is ignored, so the header
-   * has to come from the object store itself.
-   */
-  async signedReadUrl(
-    storagePath: string,
-    options?: { filename?: string; disposition?: "inline" | "attachment"; expiresInMinutes?: number },
-  ) {
-    const bucket = await this.bucket();
-    const disposition = options?.disposition ?? "inline";
-    const filename = options?.filename ?? path.basename(storagePath);
-
-    const [url] = await bucket.file(storagePath).getSignedUrl({
-      version: "v4",
-      action: "read",
-      expires: Date.now() + (options?.expiresInMinutes ?? 15) * 60_000,
-      responseDisposition: `${disposition}; filename="${sanitizeFilename(filename)}"`,
-    });
-    return url;
-  }
-
-  /**
-   * Uploaded media is referenced by URL from inside a saved project document,
-   * so it needs a *stable* address — a signed URL would expire and break the
-   * project. Making the object public gives that, and the storage key is long
-   * and random, so it is unguessable.
-   *
-   * Fails silently when the bucket uses uniform bucket-level access, where
-   * per-object ACLs are rejected; in that case access is governed by bucket IAM
-   * and there is nothing to do here.
-   */
-  async makePublic(storagePath: string) {
-    const bucket = await this.bucket();
-    try {
-      await bucket.file(storagePath).makePublic();
-    } catch (error) {
-      logger.warn("Could not mark object public (uniform bucket-level access?)", {
-        storagePath,
-        reason: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  /**
-   * Asks IAM whether this service account may write to the bucket. Read-only
-   * credentials are the common misconfiguration and would otherwise only show
-   * up as a failed upload much later, with a much less obvious message.
-   */
-  async verifyWritable() {
-    try {
-      const bucket = await this.bucket();
-      const required = ["storage.objects.create", "storage.objects.delete"];
-      const [granted] = await bucket.iam.testPermissions(required);
-      const has = (permission: string) =>
-        Array.isArray(granted)
-          ? granted.includes(permission)
-          : Boolean((granted as Record<string, boolean>)[permission]);
-
-      const missing = required.filter((permission) => !has(permission));
-      if (missing.length === 0) return { ok: true };
-
-      return {
-        ok: false,
-        reason:
-          `the service account is missing ${missing.join(", ")} on gs://${envs.GCP_BUCKET_NAME}. ` +
-          "Grant it with: gcloud storage buckets add-iam-policy-binding " +
-          `gs://${envs.GCP_BUCKET_NAME} --member=serviceAccount:<SA_EMAIL> --role=roles/storage.objectAdmin`,
-      };
-    } catch (error) {
-      return { ok: false, reason: error instanceof Error ? error.message : String(error) };
-    }
-  }
-}
-
+// Singleton
 // ---------------------------------------------------------------------------
 
 let driver: StorageDriver | null = null;
@@ -378,15 +233,7 @@ let driver: StorageDriver | null = null;
 export function objectStorage(): StorageDriver {
   if (driver) return driver;
 
-  if (envs.STORAGE_DRIVER === "gcs") {
-    if (!envs.GCP_BUCKET_NAME) {
-      throw new AppError("STORAGE_DRIVER is 'gcs' but GCP_BUCKET_NAME is not set.", 500, false);
-    }
-    driver = new GcsStorageDriver();
-  } else {
-    driver = new LocalStorageDriver();
-  }
-
+  driver = new LocalStorageDriver();
   logger.info(`🗄️  Object storage driver: ${driver.name}`);
   return driver;
 }

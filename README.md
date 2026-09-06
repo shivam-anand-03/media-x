@@ -105,7 +105,7 @@ packages/
 | [Editor](docs/editor.md) | Store, undo/redo, autosave, canvas, timeline, animation |
 | [Rendering & export](docs/rendering.md) | The full render → Remotion → FFmpeg → storage pipeline |
 | [API reference](docs/api.md) | Every endpoint, with request/response shapes |
-| [Storage](docs/storage.md) | Local vs GCS drivers, signed uploads and downloads |
+| [Storage](docs/storage.md) | The local disk driver, signed uploads and downloads |
 | [Templates](docs/templates.md) | The library, and how to author a new one |
 | [AI generation](docs/ai.md) | Plan → compile → validate, and the provider abstraction |
 | [Theming](docs/theming.md) | Design tokens, the golden theme, contrast rules |
