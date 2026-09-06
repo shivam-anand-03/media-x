@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "jsx": "react"
+  },
+  "extends": "@workspace/typescript-config/base.json"
+}
+

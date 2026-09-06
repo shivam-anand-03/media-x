@@ -1,0 +1,584 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+@source "../../../apps/**/*.{ts,tsx}";
+@source "../../../components/**/*.{ts,tsx}";
+@source "../**/*.{ts,tsx}";
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-brand-bright: var(--brand-bright);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-pink: var(--brand-pink);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --auth-gradient: linear-gradient(
+    180deg,
+    #d8b4fe 0%,
+    #a855f7 45%,
+    #3b0764 100%
+  );
+  --main-gradient: linear-gradient(
+    180deg,
+    #d8b4fe 0%,
+    #a855f7 45%,
+    #3b0764 100%
+  );
+}
+
+:root {
+  --background: oklch(0.985 0.008 310);
+  --foreground: oklch(0 0 0);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.03 310);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.03 310);
+
+  /* Main Brand — unified with the navbar brand color (#5b0e70) */
+  --primary: #5b0e70;
+  --primary-foreground: oklch(0.98 0.01 320);
+
+  /* Soft Purple Surface */
+  --secondary: oklch(0.91 0.04 305); /* #DCD4FD */
+  --secondary-foreground: oklch(0.35 0.06 305);
+
+  /* Subtle Surfaces */
+  --muted: oklch(0.96 0.02 310);
+  --muted-foreground: oklch(0.48 0.05 310);
+
+  /* Hover/Accent */
+  --accent: oklch(0.89 0.06 315); /* lavender tint */
+  --accent-foreground: oklch(0.25 0.05 315);
+
+  --destructive: oklch(0.63 0.22 25);
+
+  /* Semantic status (toasts, alerts, badges) */
+  --success: oklch(0.62 0.15 150);
+  --warning: oklch(0.72 0.16 75);
+  --info: oklch(0.58 0.16 250);
+
+  --border: oklch(0.9 0.02 300);
+  --input: oklch(0.92 0.015 300);
+  --ring: #5b0e70;
+
+  /* Charts */
+  --chart-1: oklch(0.52 0.19 315); /* #7936A2 */
+  --chart-2: oklch(0.46 0.27 320); /* #9009D3 */
+  --chart-3: oklch(0.4 0.17 310); /* #7C287D */
+  --chart-4: oklch(0.32 0.18 305); /* #4D046E */
+  --chart-5: oklch(0.62 0.12 300); /* #8B62A8 */
+
+  --radius: 1rem;
+
+  /* Sidebar */
+  --sidebar: oklch(0.98 0.01 310);
+  --sidebar-foreground: oklch(0.22 0.03 310);
+
+  --sidebar-primary: oklch(0.52 0.19 315);
+  --sidebar-primary-foreground: oklch(0.98 0.01 320);
+
+  --sidebar-accent: oklch(0.92 0.03 305);
+  --sidebar-accent-foreground: oklch(0.3 0.05 310);
+
+  --sidebar-border: oklch(0.9 0.02 300);
+  --sidebar-ring: oklch(0.58 0.22 315);
+
+  /* New semantic tokens */
+  --brand-bright: oklch(51.17% 0.257 308.28);
+  --brand-dark: oklch(40% 0.2 300);
+  --brand-soft: oklch(70% 0.1 305);
+  --brand-surface: oklch(90% 0.05 310);
+  --brand-pink: oklch(80% 0.2 315);
+
+  /* Nav follows the app surface so the brand wordmark stays legible. */
+  --nav-bg: var(--card);
+}
+
+.dark {
+  /* One cohesive dark family: every neutral shares the brand hue (~306) at low
+     chroma, so surfaces read as related instead of mixing neutral-grey with
+     purple. Elevation is a single lightness ladder:
+       background < sidebar < card = popover < muted < secondary < input < accent
+     Cards and popovers share a value so a dropdown over a card never shifts
+     colour. Foreground/ring/accents are brand-tinted, not grey. */
+
+  --background: oklch(0.16 0.012 306);
+  --foreground: oklch(0.97 0.006 306);
+
+  /* Elevated surfaces — cards and popovers match exactly */
+  --card: oklch(0.21 0.022 306);
+  --card-foreground: oklch(0.97 0.006 306);
+
+  --popover: oklch(0.21 0.022 306);
+  --popover-foreground: oklch(0.97 0.006 306);
+
+  /* Brand action — vivid purple, white text stays legible */
+  --primary: oklch(0.6 0.21 305);
+  --primary-foreground: oklch(0.99 0.01 320);
+
+  --secondary: oklch(0.27 0.032 306);
+  --secondary-foreground: oklch(0.97 0.006 306);
+
+  --muted: oklch(0.245 0.022 306);
+  --muted-foreground: oklch(0.73 0.03 306);
+
+  /* Hover/accent — a little more chroma so hovers read as brand-tinted */
+  --accent: oklch(0.3 0.05 306);
+  --accent-foreground: oklch(0.98 0.006 306);
+
+  --destructive: oklch(0.7 0.19 22);
+
+  /* Semantic status — bright enough to pop on dark surfaces */
+  --success: oklch(0.72 0.17 152);
+  --warning: oklch(0.8 0.15 80);
+  --info: oklch(0.7 0.15 250);
+
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(0.29 0.028 306);
+  --ring: oklch(0.6 0.21 305);
+
+  /* Charts — vivid, with enough lightness + hue spread to stay distinguishable
+     in donuts and legends while keeping the violet→magenta brand feel. */
+  --chart-1: oklch(0.7 0.19 305);
+  --chart-2: oklch(0.67 0.21 330);
+  --chart-3: oklch(0.74 0.15 278);
+  --chart-4: oklch(0.6 0.22 318);
+  --chart-5: oklch(0.82 0.1 300);
+
+  /* Sidebar — a hair darker than cards; active item is brand-tinted */
+  --sidebar: oklch(0.185 0.016 306);
+  --sidebar-foreground: oklch(0.97 0.006 306);
+  --sidebar-primary: oklch(0.6 0.21 305);
+  --sidebar-primary-foreground: oklch(0.99 0.01 320);
+  --sidebar-accent: oklch(0.29 0.05 306);
+  --sidebar-accent-foreground: oklch(0.98 0.006 306);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.6 0.21 305);
+
+  /* Brand tokens — dark-mode equivalents so brand-* surfaces adapt
+     instead of staying light (e.g. the dashboard header card). */
+  --brand-bright: oklch(0.66 0.24 306);
+  --brand-dark: oklch(0.5 0.2 305);
+  --brand-soft: oklch(0.46 0.12 305);
+  --brand-surface: oklch(0.22 0.035 306); /* deep purple card surface */
+  --brand-pink: oklch(0.72 0.2 330);
+
+  --nav-bg: var(--brand-surface);
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root,
+  .app {
+    height: 100vh;
+    width: 100%;
+    @apply bg-background text-base;
+    font-family: var(--font-inter), system-ui, sans-serif;
+  }
+
+  html,
+  body {
+    overflow: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none;
+  }
+
+  h1 {
+    @apply text-4xl font-bold tracking-tight;
+  }
+
+  h2 {
+    @apply text-3xl font-semibold tracking-tight;
+  }
+
+  h3 {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+
+  h4 {
+    @apply text-xl font-medium;
+  }
+
+  h5 {
+    @apply text-lg font-medium;
+  }
+
+  h6 {
+    @apply text-base font-medium;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@theme {
+  --font-inter: Inter, system-ui, sans-serif;
+  --font-lexend: Lexend, system-ui, sans-serif;
+  --animate-float-slow: float-slow 20s ease-in-out infinite;
+  --animate-float-medium: float-medium 16s ease-in-out infinite;
+  --animate-float-reverse: float-reverse 18s ease-in-out infinite;
+
+  @keyframes float-slow {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      transform: translate(30px, -50px) scale(1.1);
+    }
+  }
+  @keyframes float-medium {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      transform: translate(-30px, 40px) scale(1.05);
+    }
+  }
+  @keyframes float-reverse {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      transform: translate(40px, 30px) scale(0.95);
+    }
+  }
+}
+
+/* ============================================================
+   Magic UI motion primitives
+   Keyframes + animation aliases only — no colour tokens and no
+   font declarations are introduced here. Every component that
+   consumes these draws its colour from the theme tokens above.
+   ============================================================ */
+@theme {
+  --animate-border-beam: border-beam calc(var(--duration, 8) * 1s) infinite
+    linear;
+  --animate-shine: shine var(--duration, 14s) infinite linear;
+  --animate-shiny-text: shiny-text 8s infinite;
+  --animate-shimmer-slide: shimmer-slide var(--speed, 3s) ease-in-out infinite
+    alternate;
+  --animate-spin-around: spin-around calc(var(--speed, 3s) * 2) infinite linear;
+  --animate-meteor: meteor 5s linear infinite;
+  --animate-marquee: marquee var(--duration, 40s) linear infinite;
+  --animate-marquee-vertical: marquee-vertical var(--duration, 40s) linear
+    infinite;
+  --animate-ripple: ripple var(--duration, 3400ms) ease infinite;
+  --animate-aurora: aurora 8s ease-in-out infinite alternate;
+
+  @keyframes border-beam {
+    100% {
+      offset-distance: 100%;
+    }
+  }
+
+  @keyframes shine {
+    0% {
+      background-position: 0% 0%;
+    }
+    50% {
+      background-position: 100% 100%;
+    }
+    100% {
+      background-position: 0% 0%;
+    }
+  }
+
+  @keyframes shiny-text {
+    0%,
+    90%,
+    100% {
+      background-position: calc(-100% - var(--shiny-width, 100px)) 0;
+    }
+    30%,
+    60% {
+      background-position: calc(100% + var(--shiny-width, 100px)) 0;
+    }
+  }
+
+  @keyframes shimmer-slide {
+    to {
+      transform: translate(calc(100cqw - 100%), 0);
+    }
+  }
+
+  @keyframes spin-around {
+    0% {
+      transform: translateZ(0) rotate(0);
+    }
+    15%,
+    35% {
+      transform: translateZ(0) rotate(90deg);
+    }
+    65%,
+    85% {
+      transform: translateZ(0) rotate(270deg);
+    }
+    100% {
+      transform: translateZ(0) rotate(360deg);
+    }
+  }
+
+  @keyframes meteor {
+    0% {
+      transform: rotate(var(--angle)) translateX(0);
+      opacity: 1;
+    }
+    70% {
+      opacity: 1;
+    }
+    100% {
+      transform: rotate(var(--angle)) translateX(-500px);
+      opacity: 0;
+    }
+  }
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(calc(-100% - var(--gap, 1rem)));
+    }
+  }
+
+  @keyframes marquee-vertical {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(calc(-100% - var(--gap, 1rem)));
+    }
+  }
+
+  @keyframes ripple {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(0.9);
+    }
+  }
+
+  @keyframes aurora {
+    0% {
+      background-position: 0% 50%;
+      transform: rotate(-5deg) scale(0.9);
+    }
+    25% {
+      background-position: 50% 100%;
+      transform: rotate(5deg) scale(1.1);
+    }
+    50% {
+      background-position: 100% 50%;
+      transform: rotate(-3deg) scale(0.95);
+    }
+    75% {
+      background-position: 50% 0%;
+      transform: rotate(3deg) scale(1.05);
+    }
+    100% {
+      background-position: 0% 50%;
+      transform: rotate(-5deg) scale(0.9);
+    }
+  }
+}
+
+/* Respect reduced-motion: decorative loops stop, content stays put. */
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="magic-motion"],
+  [data-slot="magic-motion"] * {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@utility nav-gradient {
+  background: var(--nav-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Custom View Transition for Dark/Light Mode Theme Toggle */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* Ensure the new view sits on top of the old one so it can be revealed via clip-path */
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
+/* ============================================================
+   Premium SaaS Toasts (Sonner)
+   Solid, legible surface built from theme tokens, per-type
+   accent icons, refined depth + motion. Adapts to light & dark.
+   ============================================================ */
+
+/* Surface: opaque popover background + border from theme tokens.
+   (The prior `transparent` override made toasts show through to
+   whatever sat behind them — see the auth gradient bleed-through.) */
+.toaster.group {
+  --normal-bg: var(--popover);
+  --normal-text: var(--popover-foreground);
+  --normal-border: var(--border);
+}
+
+[data-sonner-toast] {
+  border-radius: var(--radius-md) !important;
+  padding: 14px 16px !important;
+  gap: 12px !important;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 6px 16px -4px rgba(0, 0, 0, 0.1),
+    0 14px 32px -12px rgba(0, 0, 0, 0.14) !important;
+  transition:
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    height 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.dark [data-sonner-toast] {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 8px 24px -6px rgba(0, 0, 0, 0.55),
+    0 2px 8px -2px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Tactile lift on hover */
+[data-sonner-toast]:hover {
+  transform: translateY(-2px) scale(1.01) !important;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    0 12px 28px -6px rgba(0, 0, 0, 0.16),
+    0 20px 44px -14px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Typography — strong title, muted description */
+[data-sonner-toast] [data-title] {
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  letter-spacing: -0.006em !important;
+}
+[data-sonner-toast] [data-description] {
+  font-size: 0.8125rem !important;
+  line-height: 1.45 !important;
+  color: var(--muted-foreground) !important;
+}
+
+/* Per-type accent icons — neutral surface, colored glyph + soft glow */
+[data-sonner-toast] [data-icon] > svg {
+  filter: drop-shadow(
+    0 1px 3px color-mix(in oklab, currentColor 35%, transparent)
+  );
+}
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: var(--success) !important;
+}
+[data-sonner-toast][data-type="error"] [data-icon] {
+  color: var(--destructive) !important;
+}
+[data-sonner-toast][data-type="warning"] [data-icon] {
+  color: var(--warning) !important;
+}
+[data-sonner-toast][data-type="info"] [data-icon] {
+  color: var(--info) !important;
+}
+
+/* Close button — revealed on hover, themed */
+[data-sonner-toast] [data-close-button] {
+  top: 10px !important;
+  right: 10px !important;
+  background: var(--popover) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--muted-foreground) !important;
+  opacity: 0;
+  transition:
+    opacity 0.2s ease,
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease !important;
+}
+[data-sonner-toast]:hover [data-close-button] {
+  opacity: 1;
+}
+[data-sonner-toast] [data-close-button]:hover {
+  color: var(--popover-foreground) !important;
+  background: var(--muted) !important;
+}

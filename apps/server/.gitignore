@@ -1,0 +1,13 @@
+node_modules
+# Keep environment variables out of version control
+node_modules
+assets
+dist/
+key.json
+.idea
+.env
+uploads/
+keys/*.json
+/dev.txt
+trugent-gcp-key.json
+/.dist

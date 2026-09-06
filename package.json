@@ -1,0 +1,47 @@
+{
+  "name": "essentolabs",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "pnpm build:client && pnpm build:server",
+    "build:client": "pnpm --filter ./apps/client build",
+    "build:server": "pnpm --filter ./apps/server build",
+    "dev": "turbo run dev",
+    "start": "concurrently \"pnpm --filter client start\" \"pnpm --filter server start\"",
+    "start:client": "pnpm --filter client start",
+    "start:server": "pnpm --filter server start",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "clean": "turbo run clean",
+    "type-check": "turbo run check-types"
+  },
+  "devDependencies": {
+    "@workspace/eslint-config": "workspace:*",
+    "@workspace/typescript-config": "workspace:*",
+    "concurrently": "^9.2.1",
+    "prettier": "^3.6.2",
+    "turbo": "^2.10.4",
+    "typescript": "^5.9.2"
+  },
+  "packageManager": "pnpm@10.25.0+sha512.5e82639027af37cf832061bcc6d639c219634488e0f2baebe785028a793de7b525ffcd3f7ff574f5e9860654e098fe852ba8ac5dd5cefe1767d23a020a92f501",
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "overrides": {
+      "react": "19.2.5",
+      "react-dom": "19.2.5",
+      "zod@^4": "4.4.3"
+    },
+    "onlyBuiltDependencies": [
+      "argon2",
+      "esbuild",
+      "msgpackr-extract",
+      "msw",
+      "sharp"
+    ]
+  },
+  "dependencies": {
+    "axios": "^1.15.1"
+  }
+}

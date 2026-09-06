@@ -1,0 +1,13 @@
+{
+  "watch": ["src"],
+  "ext": "ts,tsx,js,jsx",
+  "ignore": ["src/**/*.test.ts", "src/**/*.spec.ts", "dist/**/*", "node_modules/**/*"],
+  "exec": "tsx",
+  "delay": 500,
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "verbosity": 1,
+  "quiet": false,
+  "args": "src/index.ts"
+}

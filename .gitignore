@@ -1,0 +1,63 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Node Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+coverage
+
+# Turbo Repo Cache
+.turbo
+
+# IDE / Editor Files
+.vscode
+.DS_Store
+
+# Vercel
+.vercel
+
+# Build Outputs
+.next/
+out/
+build/
+dist/
+.dist/
+apps/**/dist/
+apps/**/.dist/
+packages/**/dist/
+packages/**/.dist/
+
+# Compiled TypeScript files in source directories
+src/**/*.d.ts
+src/**/*.d.ts.map
+src/**/*.js
+!src/**/*.config.js
+packages/**/*.d.ts
+packages/**/*.d.ts.map
+packages/**/*.js
+!packages/**/*.config.js
+apps/**/*.d.ts
+apps/**/*.d.ts.map
+apps/server/src/**/*.js
+# Environment Files
+.env
+.env.*
+!.env.example  # keep example envs if you have them
+
+# Generated Files
+/generated/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Misc
+*.pem
+nginx.conf
+/.vscode
+/.claude
+/postman
