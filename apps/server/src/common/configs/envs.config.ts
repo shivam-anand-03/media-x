@@ -46,7 +46,8 @@ export const envs = {
   REMOTION_BROWSER_EXECUTABLE: process.env.REMOTION_BROWSER_EXECUTABLE || undefined,
 
   // AI ADVERTISEMENT GENERATION
-  OPEN_AI_API_KEY: process.env.OPEN_AI_API_KEY as string,
+  /** Either spelling works; `OPEN_AI_API_KEY` wins if both are set. */
+  OPEN_AI_API_KEY: (process.env.OPEN_AI_API_KEY || process.env.OPENAI_API_KEY || "") as string,
   PINE_CONE_API_KEY: process.env.PINE_CONE_API_KEY as string,
   PINE_CONE_INDEX: process.env.PINE_CONE_INDEX as string,
   /** Model used by the AI advertisement generator. */

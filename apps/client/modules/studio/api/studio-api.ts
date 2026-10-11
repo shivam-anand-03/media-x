@@ -273,7 +273,7 @@ const StudioApi = ApiServices.injectEndpoints({
     // ---- AI ---------------------------------------------------------------
 
     generateAdvertisement: build.mutation<
-      { document: ProjectDocument; plan: AdvertisementPlan; generator: string; suggestedName: string },
+      { document: ProjectDocument; plan: AdvertisementPlan; generator: string; warning?: string; suggestedName: string },
       GenerateAdvertisementInput
     >({
       query: (body) => ({ url: "/ai/advertisements", method: "POST", body }),
@@ -282,6 +282,7 @@ const StudioApi = ApiServices.injectEndpoints({
           document: ProjectDocument;
           plan: AdvertisementPlan;
           generator: string;
+          warning?: string;
           suggestedName: string;
         }>,
       ) => response.data,

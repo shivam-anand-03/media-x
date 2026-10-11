@@ -101,17 +101,50 @@ Given a plan and a canvas it lays out:
    entrances alternating between slide-left and slide-up
 4. A CTA pill with a bounce-in and a slow pulse
 
-Timing divides the runtime into a title, one beat per scene, and a CTA. Scene
-transitions alternate slide and fade.
+A story-style progress bar runs along the top. Stage-level scene transitions are
+off, because they would also move the background; per-layer entrances and exits
+carry the motion.
 
-**Type is fitted to the canvas.** `fitFontSize` shrinks a long headline so it cannot
-overflow — the model does not know how wide its words are.
+**Layout is a measured stack, so nothing can overlap.** Each screen (opening, one
+per scene, CTA) is a vertical stack: icon, caption, title, accent rule, body.
+[`text-layout.ts`](../apps/server/src/module/ai/text-layout.ts) estimates glyph
+widths conservatively and wraps every block with *explicit* line breaks, which
+are balanced so lines come out even. Each box is sized to its real line count,
+plus horizontal slack so a wider fallback font never re-wraps. If the stack is
+taller than the platform-safe area, the whole screen's type scales down together.
+Screens get back-to-back time windows weighted by reading length, so two screens
+are never on screen at once. `ai-layout.test.ts` checks this against
+maximum-length copy on every canvas shape.
 
 The final `parseProjectDocument()` is the guard: if anything above produced an
 out-of-range value it throws rather than persisting a document the renderer cannot
 read.
 
 ---
+
+## Media: background image or video, and audio
+
+The dialog takes an optional background (image **or** video) and audio file. Both upload immediately
+through the normal signed asset flow, and the request sends only their asset
+ids (`backgroundAssetId`, `audioAssetId`). The server resolves the ids
+itself in [`generation-media.ts`](../apps/server/src/module/ai/generation-media.ts),
+so a client cannot point generation at an arbitrary URL.
+
+- **The AI sees the image.** It is downsized to 768px and sent to the model
+  with `detail: "low"`, along with its dominant colours, so the copy and
+  palette match the photo. Without a key, the offline planner still takes its
+  palette from the image's most vivid colours.
+- **For a video, the AI sees three frames** (start, middle, end), extracted with
+  the ffmpeg that ships with Remotion. No system ffmpeg is needed.
+- **The image becomes the background.** It is a full-bleed `image` layer with a
+  slow push-in, under a neutral dark overlay whose strength follows the photo's
+  brightness. Text is always light over the background.
+- **A video plays full-bleed.** A clip shorter than the short loops as
+  back-to-back copies; a very short clip is also slowed down, so there are never
+  more than 8 copies. The clip keeps its own sound only when no separate audio
+  was added; with music it is muted.
+- **The audio becomes the music bed.** It starts at 0, is trimmed to the
+  short's length, and fades in and out.
 
 ## Endpoint
 
@@ -135,12 +168,15 @@ validates it a third time.
 ## Configuration
 
 ```bash
-OPEN_AI_API_KEY="sk-…"     # note the underscore
-AI_MODEL="gpt-4o-mini"
+# apps/server/.env
+OPEN_AI_API_KEY="sk-…"     # OPENAI_API_KEY is accepted too
+AI_MODEL="gpt-4o-mini"     # any chat model that supports JSON mode
 ```
 
-> The code reads `OPEN_AI_API_KEY`. Naming it `OPENAI_API_KEY` leaves generation
-> silently on the offline planner — the dialog will tell you which one ran.
+The request uses OpenAI JSON mode. Copy that runs slightly over a length limit
+is trimmed on a word boundary rather than rejected. If the call fails (bad key,
+no quota, timeout), the offline planner takes over and the review step shows
+the reason.
 
 ---
 

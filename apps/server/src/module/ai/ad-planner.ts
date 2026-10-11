@@ -1,10 +1,11 @@
 import {
   advertisementPlanSchema,
+  isKnownIcon,
   type AdvertisementPlan,
   type GenerateAdvertisementInput,
 } from "@workspace/motion";
-import { envs } from "@/common/configs/envs.config";
 import { logger } from "@/common/helper/logger";
+import type { GenerationMedia } from "./generation-media";
 
 /**
  * Advertisement planning, behind an interface (§36).
@@ -17,7 +18,7 @@ import { logger } from "@/common/helper/logger";
  */
 export interface AdPlanner {
   readonly name: string;
-  plan(input: GenerateAdvertisementInput): Promise<AdvertisementPlan>;
+  plan(input: GenerateAdvertisementInput, media?: GenerationMedia): Promise<AdvertisementPlan>;
 }
 
 const STYLE_PALETTES: Record<string, string[]> = {
@@ -29,18 +30,30 @@ const STYLE_PALETTES: Record<string, string[]> = {
   technical: ["#38bdf8", "#6366f1", "#0f172a"],
 };
 
-const SYSTEM_PROMPT = `You are a senior advertising copywriter who writes short-form video adverts for students.
-Return ONLY a JSON object, no prose and no markdown fences, matching exactly:
+const ICON_CHOICES =
+  "sparkles, star, heart, zap, flame, award, crown, gift, rocket, trophy, target, bell, tag, percent, shopping-bag, shopping-cart, calendar, clock, map-pin, phone, mail, globe, users, user, check, check-circle, arrow-right, play, music, camera, video, code, cpu, database, wifi, smartphone, laptop, headphones, coffee, utensils, pizza, graduation-cap, book-open, lightbulb, megaphone, thumbs-up, quote";
+
+const SYSTEM_PROMPT = `You are a senior creative director who writes scroll-stopping short-form video adverts (Reels, Shorts, TikTok).
+The user gives you an instruction. Turn it into a tight on-screen script.
+Return ONLY a JSON object matching exactly:
 {
-  "headline": string (max 40 chars, punchy, the single strongest message),
-  "subheadline": string (max 80 chars, optional supporting line),
-  "scenes": [ { "title": string (max 50 chars), "body": string (max 120 chars, optional), "caption": string (max 40 chars, optional, ALL CAPS label), "icon": string (optional) } ],
-  "cta": string (max 25 chars, an action e.g. "Register Now"),
-  "palette": [ "#rrggbb", ... ] (2-4 colours that work on a dark background),
+  "headline": string (max 32 chars — the hook, readable in one glance),
+  "subheadline": string (max 70 chars, optional supporting line),
+  "scenes": [ { "title": string (max 38 chars), "body": string (max 90 chars, optional), "caption": string (max 24 chars, optional, ALL CAPS label), "icon": string (optional) } ],
+  "cta": string (max 22 chars, an action e.g. "Register Now"),
+  "palette": [ "#rrggbb", ... ] (3-4 colours: two vivid accents that pop on a dark background, then one light highlight),
   "backgroundStyle": "dark" | "light" | "gradient"
 }
-Rules: produce between 2 and 4 scenes. Keep every string within its limit. Never include markdown.
-Choose "icon" only from this list: sparkles, star, heart, zap, flame, award, crown, gift, rocket, trophy, target, bell, tag, percent, shopping-bag, shopping-cart, calendar, clock, map-pin, phone, mail, globe, users, user, check, check-circle, arrow-right, play, music, camera, video, code, cpu, database, wifi, smartphone, laptop, headphones, coffee, utensils, pizza, graduation-cap, book-open, lightbulb, megaphone, thumbs-up, quote.`;
+Writing rules:
+- On-screen text, not narration: short, concrete, no filler, no hashtags, no emoji.
+- Each scene makes ONE point. Use real facts, numbers, dates and names from the instruction; never invent prices or dates.
+- Write in the same language as the instruction.
+- Keep every string within its limit.
+- Choose "icon" only from: ${ICON_CHOICES}.
+If images are attached they show the full-screen background — a photo, or frames from a background video:
+- Look at them. Use what they show (product, place, people, food, action, mood) to make the copy specific.
+- Pick palette accents that harmonise with the background and stay readable as white-text accents over it.
+- Text sits over the background, so prefer fewer, shorter lines; you may omit "icon" when the visuals already say it.`;
 
 /**
  * The LLM-backed planner. Its output is parsed through `advertisementPlanSchema`
@@ -50,22 +63,29 @@ Choose "icon" only from this list: sparkles, star, heart, zap, flame, award, cro
 class OpenAiAdPlanner implements AdPlanner {
   readonly name = "openai";
 
-  async plan(input: GenerateAdvertisementInput): Promise<AdvertisementPlan> {
+  async plan(input: GenerateAdvertisementInput, media?: GenerationMedia): Promise<AdvertisementPlan> {
     const { openAIService } = await import("../../common/services/open-ai.service.js");
+    const background = media?.background;
 
     const userPrompt = [
-      `Product or event: ${input.subject}`,
-      `Details: ${input.description}`,
+      `Instruction: ${input.description}`,
+      input.subject ? `Brand / title: ${input.subject}` : "",
       `Visual style: ${input.style}`,
-      `Target length: ${input.duration} seconds`,
-      input.palette?.length ? `Preferred colours: ${input.palette.join(", ")}` : "",
-      `Aim for ${input.duration <= 8 ? 2 : input.duration <= 14 ? 3 : 4} scenes.`,
+      `Video length: ${input.duration} seconds`,
+      input.palette?.length ? `Brand colours to build around: ${input.palette.join(", ")}` : "",
+      background
+        ? background.kind === "video"
+          ? `Background video attached (${background.filename}${background.duration ? `, ${Math.round(background.duration)}s` : ""}); ${background.visionDataUrls.length} frames from it are attached. Dominant colours: ${background.colors.join(", ") || "unknown"}.`
+          : `Background image attached (${background.filename}). Dominant colours: ${background.colors.join(", ") || "unknown"}.`
+        : "",
+      media?.audio ? `A music track (${media.audio.filename}) plays underneath; match its likely energy.` : "",
+      `Write exactly ${sceneCountFor(input.duration)} scenes.`,
     ]
       .filter(Boolean)
       .join("\n");
 
-    const raw = await openAIService.generateResponse(userPrompt, SYSTEM_PROMPT);
-    return advertisementPlanSchema.parse(extractJson(raw));
+    const raw = await openAIService.generateJson(userPrompt, SYSTEM_PROMPT, background?.visionDataUrls);
+    return advertisementPlanSchema.parse(sanitizePlan(raw));
   }
 }
 
@@ -81,31 +101,35 @@ class OpenAiAdPlanner implements AdPlanner {
 export class HeuristicAdPlanner implements AdPlanner {
   readonly name = "heuristic";
 
-  async plan(input: GenerateAdvertisementInput): Promise<AdvertisementPlan> {
+  async plan(input: GenerateAdvertisementInput, media?: GenerationMedia): Promise<AdvertisementPlan> {
     const sentences = input.description
       .split(/(?<=[.!?])\s+|\n+/)
       .map((s) => s.trim())
       .filter(Boolean);
 
-    const sceneCount = input.duration <= 8 ? 2 : input.duration <= 14 ? 3 : 4;
+    const subject = input.subject || deriveSubject(sentences[0] ?? input.description);
+    const sceneCount = sceneCountFor(input.duration);
+    const imageAccents = media?.background?.colors.slice(1) ?? [];
     const palette = input.palette?.length
       ? input.palette.filter((c) => /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(c))
-      : (STYLE_PALETTES[input.style] ?? STYLE_PALETTES.modern!);
+      : imageAccents.length >= 2
+        ? [...imageAccents, "#ffffff"]
+        : (STYLE_PALETTES[input.style] ?? STYLE_PALETTES.modern!);
 
     const icons = ["sparkles", "zap", "star", "trophy"];
 
     const scenes = Array.from({ length: sceneCount }, (_, i) => {
       const body = sentences[i] ?? sentences[sentences.length - 1];
       return {
-        title: i === 0 ? truncate(input.subject, 50) : truncate(body ?? input.subject, 50),
+        title: i === 0 ? truncate(subject, 50) : truncate(body ?? subject, 50),
         body: i === 0 ? truncate(sentences[0] ?? input.description, 120) : truncate(sentences[i + 1] ?? "", 120) || undefined,
-        caption: i === 0 ? truncate(input.subject.toUpperCase(), 40) : undefined,
+        caption: i === 0 ? truncate(subject.toUpperCase(), 24) : undefined,
         icon: icons[i % icons.length],
       };
     });
 
     return advertisementPlanSchema.parse({
-      headline: truncate(input.subject, 40),
+      headline: truncate(subject, 40),
       subheadline: truncate(sentences[0] ?? input.description, 80),
       scenes,
       cta: "Learn More",
@@ -124,16 +148,46 @@ function truncate(value: string, max: number): string {
   return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trim();
 }
 
-/** Models sometimes wrap JSON in prose or fences; pull the object out. */
-function extractJson(raw: string): unknown {
-  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const candidate = fenced?.[1] ?? raw;
-  const start = candidate.indexOf("{");
-  const end = candidate.lastIndexOf("}");
-  if (start === -1 || end <= start) {
-    throw new Error("Model response did not contain a JSON object");
-  }
-  return JSON.parse(candidate.slice(start, end + 1));
+const sceneCountFor = (duration: number) => (duration <= 8 ? 2 : duration <= 14 ? 3 : duration <= 22 ? 4 : 5);
+
+/** "Annual tech fest for students…" → "Annual tech fest for students". */
+function deriveSubject(sentence: string): string {
+  const words = sentence.replace(/[.!?]+$/, "").split(/\s+/).filter(Boolean);
+  return truncate(words.slice(0, 6).join(" "), 40) || "Something New";
+}
+
+/**
+ * Fits model output to the plan schema's limits instead of rejecting it.
+ * A model that writes a 35-character headline against a 32 limit should not
+ * cost the user their whole generation. Anything structurally wrong still
+ * fails the schema parse that follows.
+ */
+function sanitizePlan(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null) return raw;
+  const r = raw as Record<string, unknown>;
+  const str = (value: unknown, max: number) =>
+    typeof value === "string" && value.trim() ? truncate(value, max) : undefined;
+
+  const scenes = Array.isArray(r.scenes) ? r.scenes.slice(0, 5) : [];
+  const palette = Array.isArray(r.palette)
+    ? r.palette.filter((c): c is string => typeof c === "string" && /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(c.trim())).map((c) => c.trim())
+    : [];
+
+  return {
+    headline: str(r.headline, 60),
+    subheadline: str(r.subheadline, 90),
+    scenes: scenes
+      .filter((scene): scene is Record<string, unknown> => typeof scene === "object" && scene !== null)
+      .map((scene) => ({
+        title: str(scene.title, 60) ?? str(scene.body, 60),
+        body: str(scene.body, 140),
+        caption: str(scene.caption, 50)?.toUpperCase(),
+        icon: typeof scene.icon === "string" && isKnownIcon(scene.icon) ? scene.icon : undefined,
+      })),
+    cta: str(r.cta, 30) ?? "Learn More",
+    palette: palette.length >= 2 ? palette.slice(0, 5) : ["#7c3aed", "#ec4899", "#ffffff"],
+    backgroundStyle: ["dark", "light", "gradient"].includes(r.backgroundStyle as string) ? r.backgroundStyle : "gradient",
+  };
 }
 
 /**
@@ -143,20 +197,26 @@ function extractJson(raw: string): unknown {
  */
 export async function planAdvertisement(
   input: GenerateAdvertisementInput,
-): Promise<{ plan: AdvertisementPlan; source: string }> {
+  media?: GenerationMedia,
+): Promise<{ plan: AdvertisementPlan; source: string; warning?: string }> {
+  const { hasOpenAiKey } = await import("../../common/services/open-ai.service.js");
   const fallback = new HeuristicAdPlanner();
 
-  if (!envs.OPEN_AI_API_KEY || envs.OPEN_AI_API_KEY.startsWith("your_")) {
-    return { plan: await fallback.plan(input), source: fallback.name };
+  if (!hasOpenAiKey()) {
+    return { plan: await fallback.plan(input, media), source: fallback.name };
   }
 
   const planner = new OpenAiAdPlanner();
   try {
-    return { plan: await planner.plan(input), source: planner.name };
+    return { plan: await planner.plan(input, media), source: planner.name };
   } catch (error) {
-    logger.warn("AI planner failed; using the deterministic planner instead", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return { plan: await fallback.plan(input), source: fallback.name };
+    const message = error instanceof Error ? error.message : String(error);
+    logger.warn("AI planner failed; using the deterministic planner instead", { error: message });
+    return {
+      plan: await fallback.plan(input, media),
+      source: fallback.name,
+      // Surfaced so a wrong key or exhausted quota isn't silently hidden.
+      warning: `OpenAI request failed (${message.slice(0, 160)}). Used the built-in planner instead.`,
+    };
   }
 }

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Check, Film, ImageIcon, Loader2, Music, Sparkles, Wand2 } from "lucide-react";
 import {
   AI_STYLES,
   CANVAS_PRESETS,
@@ -28,6 +28,7 @@ import {
   useCreateProjectMutation,
   useGenerateAdvertisementMutation,
 } from "../../api/studio-api";
+import { AiMediaPicker, type AiMedia } from "./ai-media-picker";
 
 /**
  * The AI advertisement generator (§36).
@@ -39,6 +40,24 @@ import {
  */
 
 type Phase = "form" | "generating" | "review" | "creating";
+
+const EXAMPLE_PROMPTS = [
+  {
+    label: "Tech fest",
+    prompt:
+      "Hype short for our college Tech Fest 2026: 40+ events, hackathons, robotics battles and a ₹5 lakh prize pool. 20–22 September. End with Register Now.",
+  },
+  {
+    label: "Café launch",
+    prompt:
+      "Announce the opening of Bean There café near campus: specialty coffee, fast Wi-Fi and study corners. 20% off for students all of October.",
+  },
+  {
+    label: "Flash sale",
+    prompt:
+      "Urgent flash sale short for our sneaker store: 50% off everything for 24 hours only, free delivery over ₹999. Make it bold and energetic.",
+  },
+];
 
 const STYLE_LABELS: Record<AiStyle, string> = {
   modern: "Modern",
@@ -66,11 +85,14 @@ export function AiGenerateDialog({
   const [style, setStyle] = React.useState<AiStyle>("modern");
   const [presetId, setPresetId] = React.useState(DEFAULT_CANVAS_PRESET_ID);
   const [duration, setDuration] = React.useState(10);
+  const [media, setMedia] = React.useState<AiMedia>({});
+  const [mediaBusy, setMediaBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [result, setResult] = React.useState<{
     document: ProjectDocument;
     plan: AdvertisementPlan;
     generator: string;
+    warning?: string;
     suggestedName: string;
   } | null>(null);
 
@@ -79,10 +101,11 @@ export function AiGenerateDialog({
       setPhase("form");
       setError(null);
       setResult(null);
+      setMedia({});
     }
   }, [open]);
 
-  const canSubmit = subject.trim().length >= 2 && description.trim().length >= 10;
+  const canSubmit = description.trim().length >= 10 && !mediaBusy;
 
   const runGenerate = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -97,6 +120,8 @@ export function AiGenerateDialog({
         style,
         preset: presetId,
         duration,
+        backgroundAssetId: media.background?.id,
+        audioAssetId: media.audio?.id,
       }).unwrap();
       setResult(data);
       setPhase("review");
@@ -112,7 +137,7 @@ export function AiGenerateDialog({
     setError(null);
     try {
       const project = await createProject({
-        name: result.suggestedName || subject.trim() || "AI Advertisement",
+        name: result.suggestedName || subject.trim() || "AI Short",
         canvas: result.document.canvas,
         document: result.document,
       }).unwrap();
@@ -129,17 +154,17 @@ export function AiGenerateDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="grid size-6 place-items-center rounded-md bg-primary/12 text-primary">
               <Sparkles className="size-3.5" />
             </span>
-            Generate with AI
+            Create a short with AI
           </DialogTitle>
           <DialogDescription>
-            Describe what you&apos;re promoting and we&apos;ll draft a complete, editable
-            advertisement.
+            Tell the AI what the short should say. It writes the script and builds a
+            complete, animated, editable video.
           </DialogDescription>
         </DialogHeader>
 
@@ -147,6 +172,8 @@ export function AiGenerateDialog({
           <PlanReview
             plan={result.plan}
             generator={result.generator}
+            warning={result.warning}
+            media={media}
             error={error}
             busy={phase === "creating"}
             onBack={() => setPhase("form")}
@@ -155,39 +182,55 @@ export function AiGenerateDialog({
         ) : (
           <form onSubmit={runGenerate} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="ai-subject" className="text-xs">
-                What are you promoting?
-              </Label>
-              <Input
-                id="ai-subject"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="College Tech Fest"
-                maxLength={120}
-                disabled={busy}
-              />
-            </div>
-
-            <div className="space-y-1.5">
               <Label htmlFor="ai-description" className="text-xs">
-                Tell us about it
+                Your instruction
               </Label>
               <Textarea
                 id="ai-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Annual technology festival for students. 40+ events, hackathons, robotics and a ₹5L prize pool. 20 September 2026."
-                rows={4}
-                maxLength={1200}
+                placeholder="Make a hype short for our college Tech Fest: 40+ events, hackathons, robotics and a ₹5L prize pool on 20 September. End with Register Now."
+                rows={5}
+                maxLength={2000}
                 disabled={busy}
+                autoFocus
                 className="resize-none"
               />
+              <div className="flex flex-wrap gap-1.5">
+                {EXAMPLE_PROMPTS.map((example) => (
+                  <button
+                    key={example.label}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setDescription(example.prompt)}
+                    className="rounded-full border border-dashed border-border px-2.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                  >
+                    {example.label}
+                  </button>
+                ))}
+              </div>
               <p className="text-[10px] text-muted-foreground">
                 {description.trim().length < 10
-                  ? "A sentence or two works best."
-                  : `${description.length} / 1200 characters`}
+                  ? "Say what it's about, the key facts, and how it should end."
+                  : `${description.length} / 2000 characters`}
               </p>
             </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="ai-subject" className="text-xs">
+                Brand or title <span className="font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                id="ai-subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Tech Fest 2026"
+                maxLength={120}
+                disabled={busy}
+              />
+            </div>
+
+            <AiMediaPicker value={media} onChange={setMedia} onBusyChange={setMediaBusy} disabled={busy} />
 
             <div className="space-y-1.5">
               <span className="block text-xs font-medium">Style</span>
@@ -264,7 +307,7 @@ export function AiGenerateDialog({
               </Button>
               <Button type="submit" size="sm" disabled={!canSubmit || busy} className="min-w-40 gap-1.5">
                 {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Wand2 className="size-3.5" />}
-                {busy ? "Writing your advert…" : "Generate advertisement"}
+                {busy ? "Writing your short…" : mediaBusy ? "Uploading media…" : "Generate short"}
               </Button>
             </div>
           </form>
@@ -278,6 +321,8 @@ export function AiGenerateDialog({
 function PlanReview({
   plan,
   generator,
+  warning,
+  media,
   error,
   busy,
   onBack,
@@ -285,6 +330,8 @@ function PlanReview({
 }: {
   plan: AdvertisementPlan;
   generator: string;
+  warning?: string;
+  media: AiMedia;
   error: string | null;
   busy: boolean;
   onBack: () => void;
@@ -343,6 +390,33 @@ function PlanReview({
         </ol>
       </div>
 
+      {(media.background || media.audio) && (
+        <div className="flex flex-wrap gap-1.5">
+          {media.background && (
+            <span className="flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/30 py-0.5 pr-2.5 pl-0.5 text-[11px]">
+              {media.background.type === "VIDEO" ? (
+                <video src={media.background.url} muted playsInline className="size-5 rounded-full object-cover" />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={media.background.url} alt="" className="size-5 rounded-full object-cover" />
+              )}
+              {media.background.type === "VIDEO" ? (
+                <Film className="size-3 text-muted-foreground" />
+              ) : (
+                <ImageIcon className="size-3 text-muted-foreground" />
+              )}
+              {media.background.type === "VIDEO" ? "Background video" : "Background image"}
+            </span>
+          )}
+          {media.audio && (
+            <span className="flex max-w-60 items-center gap-1.5 rounded-full border border-border/70 bg-muted/30 px-2.5 py-0.5 text-[11px]">
+              <Music className="size-3 shrink-0 text-muted-foreground" />
+              <span className="truncate">{media.audio.filename}</span>
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/30 px-3 py-2">
         <span className="text-[10px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
           CTA
@@ -350,7 +424,11 @@ function PlanReview({
         <span className="text-xs font-semibold text-foreground">{plan.cta}</span>
       </div>
 
-      {generator === "heuristic" && (
+      {warning ? (
+        <p className="rounded-md border border-warning/30 bg-warning/8 px-3 py-2 text-[11px] leading-relaxed text-warning">
+          {warning}
+        </p>
+      ) : generator === "heuristic" && (
         <p className="rounded-md border border-info/25 bg-info/8 px-3 py-2 text-[11px] leading-relaxed text-info">
           Written by the built-in planner — no AI provider is configured on this server. Set
           <code className="mx-1 rounded bg-info/15 px-1 font-mono">OPEN_AI_API_KEY</code>

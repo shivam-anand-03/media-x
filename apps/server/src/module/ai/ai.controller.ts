@@ -5,6 +5,7 @@ import { ValidationError } from "@/common/utils/error-utils";
 import { logger } from "@/common/helper/logger";
 import { planAdvertisement } from "./ad-planner";
 import { compilePlanToDocument } from "./plan-compiler";
+import { resolveGenerationMedia } from "./generation-media";
 
 class AiController {
   /**
@@ -20,19 +21,23 @@ class AiController {
     const preset = getCanvasPreset(input.preset);
     if (!preset) throw new ValidationError("Unknown canvas preset.");
 
-    const { plan, source } = await planAdvertisement(input);
+    const media = await resolveGenerationMedia(input);
+    const { plan, source, warning } = await planAdvertisement(input, media);
 
     const document = compilePlanToDocument(plan, {
       width: preset.width,
       height: preset.height,
       fps: preset.fps,
       duration: input.duration,
-    });
+    }, media);
 
     logger.info("Advertisement generated", {
       source,
       scenes: document.scenes.length,
       layers: document.layers.length,
+      background: media.background?.kind,
+      visionFrames: media.background?.visionDataUrls.length ?? 0,
+      audio: Boolean(media.audio),
     });
 
     res.status(200).json(
@@ -41,6 +46,7 @@ class AiController {
         plan,
         // Surfaced so the UI can say when it fell back to the offline planner.
         generator: source,
+        warning,
         suggestedName: plan.headline.slice(0, 60),
       }),
     );

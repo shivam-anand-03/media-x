@@ -122,14 +122,20 @@ export const aiStyleSchema = z.enum(AI_STYLES);
 export type AiStyle = z.infer<typeof aiStyleSchema>;
 
 export const generateAdvertisementSchema = z.object({
-  subject: z.string().trim().min(2, "Tell us what you're promoting").max(120),
-  description: z.string().trim().min(10, "Add a little more detail").max(1200),
+  /** Optional brand / title. When empty the planner derives one from the instruction. */
+  subject: z.string().trim().max(120).default(""),
+  /** The user's instruction: what the short should be about and say. */
+  description: z.string().trim().min(10, "Describe your short in a sentence or two").max(2000),
   style: aiStyleSchema.default("modern"),
   /** A canvas preset id from `CANVAS_PRESETS`. */
   preset: z.string().max(60).default("instagram-reel"),
   duration: z.number().min(3).max(60).default(10),
   /** Optional brand colours the plan should build around. */
   palette: z.array(z.string().max(9)).max(6).optional(),
+  /** An uploaded image or video asset: the AI looks at it, and it becomes the background. */
+  backgroundAssetId: z.string().trim().regex(/^[a-f0-9]{24}$/i, "Invalid background asset").optional(),
+  /** An uploaded audio asset, laid under the whole short as music. */
+  audioAssetId: z.string().trim().regex(/^[a-f0-9]{24}$/i, "Invalid audio asset").optional(),
 });
 export type GenerateAdvertisementInput = z.infer<typeof generateAdvertisementSchema>;
 

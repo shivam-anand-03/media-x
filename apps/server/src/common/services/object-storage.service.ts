@@ -36,6 +36,10 @@ export interface StorageDriver {
   /** Confirms the object exists and returns its real size. */
   head(storagePath: string): Promise<{ exists: boolean; size: number }>;
   putBuffer(storagePath: string, buffer: Buffer, mimeType: string): Promise<string>;
+  /** Reads an object's bytes, for server-side processing (e.g. AI vision). */
+  read(storagePath: string): Promise<Buffer>;
+  /** A filesystem path for tools like ffmpeg, or null if the driver has none. */
+  localPath(storagePath: string): string | null;
   publicUrl(storagePath: string): string;
   delete(storagePath: string): Promise<void>;
   /**
@@ -195,6 +199,14 @@ class LocalStorageDriver implements StorageDriver {
     await fs.mkdir(path.dirname(target), { recursive: true });
     await fs.writeFile(target, buffer);
     return this.publicUrl(storagePath);
+  }
+
+  async read(storagePath: string) {
+    return fs.readFile(resolveLocalPath(storagePath));
+  }
+
+  localPath(storagePath: string) {
+    return resolveLocalPath(storagePath);
   }
 
   publicUrl(storagePath: string): string {

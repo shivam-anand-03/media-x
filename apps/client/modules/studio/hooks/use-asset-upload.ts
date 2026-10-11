@@ -124,11 +124,11 @@ export function useAssetUpload(projectId?: string) {
   }, []);
 
   const run = React.useCallback(
-    async (item: UploadItem) => {
+    async (item: UploadItem): Promise<AssetRecord | undefined> => {
       const kind = kindFromFile(item.file);
       if (!kind) {
         patch(item.id, { status: "error", error: "Unsupported file type." });
-        return;
+        return undefined;
       }
 
       try {
@@ -168,15 +168,18 @@ export function useAssetUpload(projectId?: string) {
         setTimeout(() => {
           setUploads((current) => current.filter((u) => u.id !== item.id));
         }, 1200);
+        return asset;
       } catch (error) {
         patch(item.id, { status: "error", error: describeUploadError(error) });
+        return undefined;
       }
     },
     [confirmUpload, patch, projectId, requestUploadUrl],
   );
 
+  /** Uploads sequentially; resolves with the assets that succeeded. */
   const upload = React.useCallback(
-    async (files: File[]) => {
+    async (files: File[]): Promise<AssetRecord[]> => {
       const items: UploadItem[] = files.map((file) => ({
         id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2, 8)}`,
         filename: file.name,
@@ -188,9 +191,12 @@ export function useAssetUpload(projectId?: string) {
       setUploads((current) => [...current, ...items]);
       // Sequential: parallel uploads of several large videos starve each other
       // and make every progress bar crawl.
+      const done: AssetRecord[] = [];
       for (const item of items) {
-        await run(item);
+        const asset = await run(item);
+        if (asset) done.push(asset);
       }
+      return done;
     },
     [run],
   );
